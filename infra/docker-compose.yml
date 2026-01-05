@@ -1,0 +1,114 @@
+version: "3.9"
+name: 'inkflow'
+
+# InkFlow 로컬 개발용 인프라 구성
+services:
+  postgres:
+    image: postgres:16
+    container_name: inkflow-postgres
+    environment:
+      POSTGRES_DB: inkflow
+      POSTGRES_USER: inkflow
+      POSTGRES_PASSWORD: inkflow_pw
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U inkflow -d inkflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongodb:
+    image: mongo:7
+    container_name: inkflow-mongo
+    environment:
+      MONGO_INITDB_DATABASE: inkflow
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    container_name: inkflow-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Kafka는 KRaft 모드로 단일 노드 구성한다.
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: inkflow-kafka
+    environment:
+      # KRaft 컨트롤러+브로커 단일 노드 구성
+      KAFKA_NODE_ID: 1
+      # 고정된 클러스터 ID (KRaft 필수, base64-encoded UUID 16바이트)
+      KAFKA_CLUSTER_ID: cjBHQTBUTU5YQk1GRjgxQg==
+      CLUSTER_ID: cjBHQTBUTU5YQk1GRjgxQg==
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+
+  # MinIO는 S3 호환 스토리지로 사용한다. 운영에서는 별도 보안 설정이 필요하다.
+  minio:
+    image: minio/minio:latest
+    container_name: inkflow-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: inkflow
+      MINIO_ROOT_PASSWORD: inkflow_pw
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  # Elasticsearch는 단일 노드로 구성한다.
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+    container_name: inkflow-elasticsearch
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      xpack.security.enrollment.enabled: "false"
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+
+volumes:
+  postgres_data:
+  mongo_data:
+  redis_data:
+  kafka_data:
+  minio_data:
+  elasticsearch_data:
