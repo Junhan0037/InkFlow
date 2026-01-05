@@ -1,3 +1,10 @@
 spring:
   application:
     name: InkFlow
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/inkflow}
+    username: ${SPRING_DATASOURCE_USERNAME:inkflow}
+    password: ${SPRING_DATASOURCE_PASSWORD:inkflow_pw}
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
