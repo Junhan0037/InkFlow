@@ -20,6 +20,10 @@ object ReactorRequestContext {
      * 리액터 Context에서 RequestContext를 조회한다.
      */
     fun get(contextView: ContextView): RequestContext? {
-        return contextView.getOrDefault(CONTEXT_KEY, null)
+        return if (contextView.hasKey(CONTEXT_KEY)) {
+            contextView.get<RequestContext>(CONTEXT_KEY)
+        } else {
+            null
+        }
     }
 }
