@@ -11,3 +11,6 @@ include("libs:common-security")
 
 // 공통 gRPC 라이브러리를 멀티 모듈로 관리한다.
 include("libs:common-grpc")
+
+// 공통 에러 라이브러리를 멀티 모듈로 관리한다.
+include("libs:common-error")
