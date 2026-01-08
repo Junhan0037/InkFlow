@@ -25,3 +25,5 @@ inkflow:
         key-prefix: ${INKFLOW_UPLOAD_SESSION_KEY_PREFIX:upload:session:}
     presign:
       base-url: ${INKFLOW_UPLOAD_PRESIGN_BASE_URL:http://localhost:9000}
+    download:
+      ttl: ${INKFLOW_UPLOAD_DOWNLOAD_TTL:10m}

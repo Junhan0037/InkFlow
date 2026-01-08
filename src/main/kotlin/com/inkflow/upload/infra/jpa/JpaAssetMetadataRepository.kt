@@ -40,4 +40,11 @@ class JpaAssetMetadataRepository(
     override fun findByUploadId(uploadId: String): AssetMetadata? {
         return assetMetadataJpaRepository.findByUploadId(uploadId)?.toDomain()
     }
+
+    /**
+     * Asset ID로 Asset 메타데이터를 조회한다.
+     */
+    override fun findById(assetId: Long): AssetMetadata? {
+        return assetMetadataJpaRepository.findById(assetId).orElse(null)?.toDomain()
+    }
 }

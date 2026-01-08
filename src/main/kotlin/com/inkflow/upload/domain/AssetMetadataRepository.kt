@@ -13,4 +13,9 @@ interface AssetMetadataRepository {
      * 업로드 ID로 Asset 메타데이터를 조회한다.
      */
     fun findByUploadId(uploadId: String): AssetMetadata?
+
+    /**
+     * Asset ID로 Asset 메타데이터를 조회한다.
+     */
+    fun findById(assetId: Long): AssetMetadata?
 }
