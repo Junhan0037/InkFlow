@@ -14,3 +14,19 @@ data class CreateUploadSessionRequest(
     val checksum: String,
     val totalParts: Int
 )
+
+/**
+ * 업로드 완료 요청 DTO.
+ */
+data class CompleteUploadSessionRequest(
+    val uploadedParts: List<UploadedPartRequest>,
+    val checksum: String
+)
+
+/**
+ * 업로드 완료 요청에 포함되는 파트 정보 DTO.
+ */
+data class UploadedPartRequest(
+    val partNumber: Int,
+    val etag: String
+)

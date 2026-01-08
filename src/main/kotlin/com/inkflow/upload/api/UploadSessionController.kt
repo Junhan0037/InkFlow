@@ -5,7 +5,10 @@ import com.inkflow.common.error.BusinessException
 import com.inkflow.common.error.ErrorCode
 import com.inkflow.common.security.RequestContextFactory
 import com.inkflow.common.security.RequestContextHeaders
+import com.inkflow.upload.application.CompleteUploadSessionCommand
+import com.inkflow.upload.application.CompletedPart
 import com.inkflow.upload.application.CreateUploadSessionCommand
+import com.inkflow.upload.application.UploadSessionCompletionResult
 import com.inkflow.upload.application.UploadSessionApplicationService
 import com.inkflow.upload.application.UploadSessionCreationResult
 import org.springframework.http.ResponseEntity
@@ -13,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.server.ServerWebExchange
 import reactor.core.publisher.Mono
 import reactor.core.scheduler.Schedulers
@@ -39,6 +43,25 @@ class UploadSessionController(
         val command = request.toCommand(creatorId)
 
         return Mono.fromCallable { uploadSessionApplicationService.createSession(command) }
+            // JDBC/Redis 호출은 blocking이므로 별도 스케줄러에서 수행한다.
+            .subscribeOn(Schedulers.boundedElastic())
+            .map { result -> toResponseEntity(requestId, result) }
+    }
+
+    /**
+     * 업로드 완료를 처리하고 Asset 메타데이터를 생성한다.
+     */
+    @PostMapping("/{uploadId}/complete")
+    fun completeUploadSession(
+        @PathVariable uploadId: String,
+        @RequestBody request: CompleteUploadSessionRequest,
+        exchange: ServerWebExchange
+    ): Mono<ResponseEntity<ApiResponse<CompleteUploadSessionResponse>>> {
+        val requestId = resolveRequestId(exchange)
+        val creatorId = resolveCreatorId(exchange)
+        val command = request.toCommand(uploadId, creatorId)
+
+        return Mono.fromCallable { uploadSessionApplicationService.completeSession(command) }
             // JDBC/Redis 호출은 blocking이므로 별도 스케줄러에서 수행한다.
             .subscribeOn(Schedulers.boundedElastic())
             .map { result -> toResponseEntity(requestId, result) }
@@ -102,5 +125,48 @@ class UploadSessionController(
             presignedUrls = presignedUrls.map { PresignedPartUrlResponse(it.partNumber, it.url) },
             expiresAt = expiresAt
         )
+    }
+
+    /**
+     * 업로드 완료 요청을 커맨드로 변환한다.
+     */
+    private fun CompleteUploadSessionRequest.toCommand(
+        uploadId: String,
+        creatorId: String
+    ): CompleteUploadSessionCommand {
+        return CompleteUploadSessionCommand(
+            uploadId = uploadId,
+            creatorId = creatorId,
+            uploadedParts = uploadedParts.map {
+                CompletedPart(
+                    partNumber = it.partNumber,
+                    etag = it.etag
+                )
+            },
+            checksum = checksum
+        )
+    }
+
+    /**
+     * 업로드 완료 결과를 응답 DTO로 변환한다.
+     */
+    private fun UploadSessionCompletionResult.toResponse(): CompleteUploadSessionResponse {
+        return CompleteUploadSessionResponse(
+            assetId = assetId,
+            status = status
+        )
+    }
+
+    /**
+     * 업로드 완료 응답을 표준 포맷으로 구성한다.
+     */
+    private fun toResponseEntity(
+        requestId: String,
+        result: UploadSessionCompletionResult
+    ): ResponseEntity<ApiResponse<CompleteUploadSessionResponse>> {
+        val response = ApiResponse.success(requestId, result.toResponse())
+        return ResponseEntity.ok()
+            .header(RequestContextHeaders.REQUEST_ID, requestId)
+            .body(response)
     }
 }

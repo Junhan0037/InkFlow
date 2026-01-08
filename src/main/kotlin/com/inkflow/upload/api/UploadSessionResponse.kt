@@ -1,5 +1,6 @@
 package com.inkflow.upload.api
 
+import com.inkflow.upload.domain.AssetStatus
 import java.time.Instant
 
 /**
@@ -18,4 +19,12 @@ data class CreateUploadSessionResponse(
 data class PresignedPartUrlResponse(
     val partNumber: Int,
     val url: String
+)
+
+/**
+ * 업로드 완료 응답 DTO.
+ */
+data class CompleteUploadSessionResponse(
+    val assetId: Long,
+    val status: AssetStatus
 )
