@@ -1,8 +1,12 @@
 package com.inkflow.upload.application
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.inkflow.common.error.BusinessException
 import com.inkflow.common.error.ErrorCode
 import com.inkflow.common.error.SystemException
+import com.inkflow.common.events.EventEnvelope
+import com.inkflow.common.outbox.domain.OutboxEvent
+import com.inkflow.common.outbox.domain.OutboxEventRepository
 import com.inkflow.upload.domain.AssetMetadata
 import com.inkflow.upload.domain.AssetMetadataRepository
 import com.inkflow.upload.domain.UploadSession
@@ -25,9 +29,16 @@ class UploadSessionApplicationService(
     private val presignedUrlProvider: MultipartPresignedUrlProvider,
     private val multipartUploadCompleter: MultipartUploadCompleter,
     private val assetMetadataRepository: AssetMetadataRepository,
+    private val outboxEventRepository: OutboxEventRepository,
+    private val objectMapper: ObjectMapper,
     private val properties: UploadSessionProperties,
     private val clock: Clock
 ) {
+    companion object {
+        private const val EVENT_PRODUCER = "upload-api" // Outbox 이벤트에 기록할 producer 식별자.
+        private const val AGGREGATE_TYPE_ASSET = "ASSET" // Asset 집합을 나타내는 Outbox aggregate 타입.
+    }
+
     /**
      * 업로드 세션을 생성하고 presigned URL을 발급한다.
      */
@@ -146,8 +157,13 @@ class UploadSessionApplicationService(
         uploadSessionRepository.save(completedSession)
         uploadSessionCacheRepository.save(completedSession)
 
-        val storedAsset = assetMetadataRepository.findByUploadId(session.uploadId)
-            ?: createStoredAsset(session, now)
+        val existingAsset = assetMetadataRepository.findByUploadId(session.uploadId)
+        val storedAsset = existingAsset ?: createStoredAsset(session, now)
+
+        // 신규 Asset 저장 시 Outbox 이벤트를 함께 기록한다.
+        if (existingAsset == null) {
+            recordAssetStoredEvent(storedAsset, session, now)
+        }
 
         return UploadSessionCompletionResult(
             assetId = storedAsset.id ?: throw missingAssetId(storedAsset.uploadId),
@@ -282,6 +298,60 @@ class UploadSessionApplicationService(
 
         val storedAsset = asset.markStored(now)
         return assetMetadataRepository.save(storedAsset)
+    }
+
+    /**
+     * Asset 저장 완료 이벤트를 Outbox에 기록한다.
+     */
+    private fun recordAssetStoredEvent(
+        asset: AssetMetadata,
+        session: UploadSession,
+        occurredAt: Instant
+    ) {
+        val assetId = asset.id ?: throw missingAssetId(session.uploadId)
+        val payload = AssetStoredEventPayload(
+            assetId = assetId,
+            uploadId = session.uploadId,
+            episodeId = session.episodeId,
+            creatorId = session.creatorId,
+            fileName = session.fileName,
+            contentType = session.contentType,
+            size = session.totalSize,
+            checksum = session.checksum,
+            storageBucket = session.storageBucket,
+            storageKey = session.storageKey,
+            status = asset.status,
+            occurredAt = occurredAt
+        )
+
+        val envelope = EventEnvelope.create(
+            eventType = UploadEventTypes.ASSET_STORED,
+            producer = EVENT_PRODUCER,
+            payload = payload,
+            idempotencyKey = session.uploadId,
+            occurredAt = occurredAt
+        )
+
+        val serializedPayload = try {
+            objectMapper.writeValueAsString(envelope)
+        } catch (exception: Exception) {
+            throw SystemException(
+                errorCode = ErrorCode.INTERNAL_ERROR,
+                details = mapOf("uploadId" to session.uploadId),
+                message = "Outbox 이벤트 직렬화에 실패했습니다.",
+                cause = exception
+            )
+        }
+
+        val outboxEvent = OutboxEvent.pending(
+            aggregateType = AGGREGATE_TYPE_ASSET,
+            aggregateId = assetId.toString(),
+            eventType = envelope.eventType.asString(),
+            payload = serializedPayload,
+            createdAt = occurredAt
+        )
+
+        outboxEventRepository.save(outboxEvent)
     }
 
     /**
