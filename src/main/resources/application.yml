@@ -16,5 +16,12 @@ spring:
 inkflow:
   upload:
     session:
+      ttl: ${INKFLOW_UPLOAD_SESSION_TTL:30m}
+      min-chunk-size: ${INKFLOW_UPLOAD_MIN_CHUNK_SIZE:5242880}
+      max-part-count: ${INKFLOW_UPLOAD_MAX_PART_COUNT:10000}
+      storage-bucket: ${INKFLOW_UPLOAD_BUCKET:inkflow-uploads}
+      storage-key-prefix: ${INKFLOW_UPLOAD_KEY_PREFIX:uploads/}
       redis:
         key-prefix: ${INKFLOW_UPLOAD_SESSION_KEY_PREFIX:upload:session:}
+    presign:
+      base-url: ${INKFLOW_UPLOAD_PRESIGN_BASE_URL:http://localhost:9000}
