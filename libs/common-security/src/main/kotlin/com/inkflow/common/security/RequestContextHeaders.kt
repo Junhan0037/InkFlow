@@ -10,6 +10,11 @@ object RequestContextHeaders {
     const val REQUEST_ID = "X-Request-Id"
 
     /**
+     * Idempotency 키 전달에 사용하는 헤더.
+     */
+    const val IDEMPOTENCY_KEY = "Idempotency-Key"
+
+    /**
      * 인증된 사용자 식별자 전달에 사용하는 헤더.
      */
     const val USER_ID = "X-User-Id"

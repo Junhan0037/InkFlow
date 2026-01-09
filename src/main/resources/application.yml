@@ -27,3 +27,7 @@ inkflow:
       base-url: ${INKFLOW_UPLOAD_PRESIGN_BASE_URL:http://localhost:9000}
     download:
       ttl: ${INKFLOW_UPLOAD_DOWNLOAD_TTL:10m}
+    idempotency:
+      ttl: ${INKFLOW_UPLOAD_IDEMPOTENCY_TTL:1h}
+      redis:
+        key-prefix: ${INKFLOW_UPLOAD_IDEMPOTENCY_KEY_PREFIX:upload:idempotency:}

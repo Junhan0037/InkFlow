@@ -8,9 +8,11 @@ import com.inkflow.common.security.RequestContextHeaders
 import com.inkflow.upload.application.CompleteUploadSessionCommand
 import com.inkflow.upload.application.CompletedPart
 import com.inkflow.upload.application.CreateUploadSessionCommand
+import com.inkflow.upload.application.IdempotencyService
 import com.inkflow.upload.application.UploadSessionCompletionResult
 import com.inkflow.upload.application.UploadSessionApplicationService
 import com.inkflow.upload.application.UploadSessionCreationResult
+import com.inkflow.upload.application.UploadIdempotencyKeys
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -28,6 +30,7 @@ import reactor.core.scheduler.Schedulers
 @RequestMapping("/uploads")
 class UploadSessionController(
     private val uploadSessionApplicationService: UploadSessionApplicationService,
+    private val idempotencyService: IdempotencyService,
     private val requestContextFactory: RequestContextFactory
 ) {
     /**
@@ -40,9 +43,29 @@ class UploadSessionController(
     ): Mono<ResponseEntity<ApiResponse<CreateUploadSessionResponse>>> {
         val requestId = resolveRequestId(exchange)
         val creatorId = resolveCreatorId(exchange)
+        val idempotencyKey = resolveIdempotencyKey(exchange)
         val command = request.toCommand(creatorId)
 
-        return Mono.fromCallable { uploadSessionApplicationService.createSession(command) }
+        val supplier = {
+            uploadSessionApplicationService.createSession(command)
+        }
+
+        val operation = if (idempotencyKey.isNullOrBlank()) {
+            Mono.fromCallable(supplier)
+        } else {
+            val key = UploadIdempotencyKeys.forCreateSession(creatorId, idempotencyKey)
+            Mono.fromCallable {
+                // 동일 요청 중복 처리를 방지하기 위해 Idempotency 키를 적용한다.
+                idempotencyService.execute(
+                    key = key,
+                    resultClass = UploadSessionCreationResult::class.java,
+                    actionName = "createUploadSession",
+                    supplier = supplier
+                )
+            }
+        }
+
+        return operation
             // JDBC/Redis 호출은 blocking이므로 별도 스케줄러에서 수행한다.
             .subscribeOn(Schedulers.boundedElastic())
             .map { result -> toResponseEntity(requestId, result) }
@@ -59,9 +82,29 @@ class UploadSessionController(
     ): Mono<ResponseEntity<ApiResponse<CompleteUploadSessionResponse>>> {
         val requestId = resolveRequestId(exchange)
         val creatorId = resolveCreatorId(exchange)
+        val idempotencyKey = resolveIdempotencyKey(exchange)
         val command = request.toCommand(uploadId, creatorId)
 
-        return Mono.fromCallable { uploadSessionApplicationService.completeSession(command) }
+        val supplier = {
+            uploadSessionApplicationService.completeSession(command)
+        }
+
+        val operation = if (idempotencyKey.isNullOrBlank()) {
+            Mono.fromCallable(supplier)
+        } else {
+            val key = UploadIdempotencyKeys.forCompleteSession(creatorId, uploadId, idempotencyKey)
+            Mono.fromCallable {
+                // 동일 요청 중복 처리를 방지하기 위해 Idempotency 키를 적용한다.
+                idempotencyService.execute(
+                    key = key,
+                    resultClass = UploadSessionCompletionResult::class.java,
+                    actionName = "completeUploadSession",
+                    supplier = supplier
+                )
+            }
+        }
+
+        return operation
             // JDBC/Redis 호출은 blocking이므로 별도 스케줄러에서 수행한다.
             .subscribeOn(Schedulers.boundedElastic())
             .map { result -> toResponseEntity(requestId, result) }
@@ -85,6 +128,15 @@ class UploadSessionController(
                 errorCode = ErrorCode.UNAUTHORIZED,
                 message = "creatorId 헤더가 필요합니다."
             )
+    }
+
+    /**
+     * 요청 헤더에서 Idempotency 키를 추출한다.
+     */
+    private fun resolveIdempotencyKey(exchange: ServerWebExchange): String? {
+        return exchange.request.headers.getFirst(RequestContextHeaders.IDEMPOTENCY_KEY)
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
     }
 
     /**
