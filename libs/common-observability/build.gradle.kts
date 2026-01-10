@@ -17,17 +17,24 @@ repositories {
 }
 
 dependencies {
-    // 버전 명시로 공통 관측성 의존성을 고정한다.
     val slf4jVersion = "2.0.16"
     val micrometerVersion = "1.13.5"
-
-    // 로깅 MDC 및 공통 태그 정의에 필요한 최소 의존성만 제공한다.
+    val junitVersion = "5.12.2"
+    val junitPlatformVersion = "1.12.2"
+    val logbackVersion = "1.5.13"
     api("org.slf4j:slf4j-api:$slf4jVersion")
     api("io.micrometer:micrometer-core:$micrometerVersion")
+    testImplementation("org.junit.jupiter:junit-jupiter:$junitVersion")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:$junitPlatformVersion")
+    testImplementation("ch.qos.logback:logback-classic:$logbackVersion")
 }
 
 kotlin {
     compilerOptions {
         freeCompilerArgs.addAll("-Xjsr305=strict")
     }
+}
+
+tasks.withType<Test> {
+    useJUnitPlatform()
 }

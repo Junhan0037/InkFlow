@@ -17,15 +17,21 @@ repositories {
 }
 
 dependencies {
-    // Spring WebFlux 타입 의존성을 직접 고정해 미들웨어 구현에 사용한다.
     val springFrameworkVersion = "6.2.2"
-
+    val junitVersion = "5.12.2"
+    val junitPlatformVersion = "1.12.2"
     api(project(":libs:common-observability"))
     api("org.springframework:spring-webflux:$springFrameworkVersion")
+    testImplementation("org.junit.jupiter:junit-jupiter:$junitVersion")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:$junitPlatformVersion")
 }
 
 kotlin {
     compilerOptions {
         freeCompilerArgs.addAll("-Xjsr305=strict")
     }
+}
+
+tasks.withType<Test> {
+    useJUnitPlatform()
 }

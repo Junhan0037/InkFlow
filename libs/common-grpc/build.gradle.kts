@@ -17,15 +17,21 @@ repositories {
 }
 
 dependencies {
-    // gRPC 공통 인터셉터 구현에 필요한 최소 의존성을 고정한다.
     val grpcVersion = "1.64.0"
-
+    val junitVersion = "5.12.2"
+    val junitPlatformVersion = "1.12.2"
     api(project(":libs:common-observability"))
     api("io.grpc:grpc-api:$grpcVersion")
+    testImplementation("org.junit.jupiter:junit-jupiter:$junitVersion")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:$junitPlatformVersion")
 }
 
 kotlin {
     compilerOptions {
         freeCompilerArgs.addAll("-Xjsr305=strict")
     }
+}
+
+tasks.withType<Test> {
+    useJUnitPlatform()
 }
