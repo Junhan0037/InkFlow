@@ -23,6 +23,10 @@ inkflow:
       storage-key-prefix: ${INKFLOW_UPLOAD_KEY_PREFIX:uploads/}
       redis:
         key-prefix: ${INKFLOW_UPLOAD_SESSION_KEY_PREFIX:upload:session:}
+    validation:
+      min-file-size: ${INKFLOW_UPLOAD_MIN_FILE_SIZE:1}
+      max-file-size: ${INKFLOW_UPLOAD_MAX_FILE_SIZE:5368709120}
+      allowed-extensions: ${INKFLOW_UPLOAD_ALLOWED_EXTENSIONS:jpg,jpeg,png,gif,webp,mp4,mov,pdf,epub}
     presign:
       base-url: ${INKFLOW_UPLOAD_PRESIGN_BASE_URL:http://localhost:9000}
     download:

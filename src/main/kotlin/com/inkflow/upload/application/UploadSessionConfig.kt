@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Configuration
 @Configuration
 @EnableConfigurationProperties(
     UploadSessionProperties::class,
+    UploadValidationProperties::class,
     UploadPresignProperties::class,
     AssetDownloadProperties::class,
     IdempotencyProperties::class

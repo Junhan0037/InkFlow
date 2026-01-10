@@ -9,6 +9,7 @@ import com.inkflow.common.outbox.domain.OutboxEvent
 import com.inkflow.common.outbox.domain.OutboxEventRepository
 import com.inkflow.upload.domain.AssetMetadata
 import com.inkflow.upload.domain.AssetMetadataRepository
+import com.inkflow.upload.domain.EpisodeAccessRepository
 import com.inkflow.upload.domain.UploadSession
 import com.inkflow.upload.domain.UploadSessionCacheRepository
 import com.inkflow.upload.domain.UploadSessionRepository
@@ -29,9 +30,11 @@ class UploadSessionApplicationService(
     private val presignedUrlProvider: MultipartPresignedUrlProvider,
     private val multipartUploadCompleter: MultipartUploadCompleter,
     private val assetMetadataRepository: AssetMetadataRepository,
+    private val episodeAccessRepository: EpisodeAccessRepository,
     private val outboxEventRepository: OutboxEventRepository,
     private val objectMapper: ObjectMapper,
     private val properties: UploadSessionProperties,
+    private val validationProperties: UploadValidationProperties,
     private val clock: Clock
 ) {
     companion object {
@@ -199,6 +202,10 @@ class UploadSessionApplicationService(
         if (command.totalParts > properties.maxPartCount) {
             throw invalid("totalParts", "totalParts는 ${properties.maxPartCount} 이하여야 합니다.")
         }
+
+        validateFileSize(command.size)
+        validateFileExtension(command.fileName)
+        verifyUploadPermission(command.episodeId, command.creatorId)
 
         val chunkSize = calculateChunkSize(command.size, command.totalParts)
         if (command.totalParts > 1 && chunkSize < properties.minChunkSize) {
@@ -399,6 +406,67 @@ class UploadSessionApplicationService(
     private fun sanitizeFileName(fileName: String): String {
         val normalized = fileName.replace("\\", "/")
         return normalized.substringAfterLast('/')
+    }
+
+    /**
+     * 업로드 파일 크기를 정책 범위 내로 검증한다.
+     */
+    private fun validateFileSize(size: Long) {
+        if (size < validationProperties.minFileSize) {
+            throw invalid("size", "size는 ${validationProperties.minFileSize} 이상이어야 합니다.")
+        }
+        if (size > validationProperties.maxFileSize) {
+            throw invalid("size", "size는 ${validationProperties.maxFileSize} 이하여야 합니다.")
+        }
+    }
+
+    /**
+     * 업로드 파일 확장자를 검증한다.
+     */
+    private fun validateFileExtension(fileName: String) {
+        val sanitizedFileName = sanitizeFileName(fileName)
+        if (sanitizedFileName.isBlank()) {
+            throw invalid("filename", "filename은 비어 있을 수 없습니다.")
+        }
+        val extension = extractFileExtension(sanitizedFileName)
+        if (extension.isBlank()) {
+            throw invalid("filename", "파일 확장자가 필요합니다.")
+        }
+        val normalized = extension.lowercase()
+        val allowedExtensions = validationProperties.allowedExtensions.map { it.lowercase() }.toSet()
+        if (allowedExtensions.isNotEmpty() && normalized !in allowedExtensions) {
+            throw invalid("filename", "허용되지 않는 파일 확장자입니다.")
+        }
+    }
+
+    /**
+     * 에피소드 소유자 정보를 기반으로 업로드 권한을 확인한다.
+     */
+    private fun verifyUploadPermission(episodeId: Long, creatorId: String) {
+        val ownerId = episodeAccessRepository.findCreatorIdByEpisodeId(episodeId)
+            ?: throw BusinessException(
+                errorCode = ErrorCode.NOT_FOUND,
+                details = mapOf("episodeId" to episodeId.toString()),
+                message = "에피소드를 찾을 수 없습니다."
+            )
+        if (ownerId != creatorId) {
+            throw BusinessException(
+                errorCode = ErrorCode.FORBIDDEN,
+                details = mapOf("episodeId" to episodeId.toString()),
+                message = "해당 에피소드에 대한 업로드 권한이 없습니다."
+            )
+        }
+    }
+
+    /**
+     * 파일명에서 확장자를 추출한다.
+     */
+    private fun extractFileExtension(fileName: String): String {
+        val lastDotIndex = fileName.lastIndexOf('.')
+        if (lastDotIndex <= 0 || lastDotIndex == fileName.length - 1) {
+            return ""
+        }
+        return fileName.substring(lastDotIndex + 1)
     }
 
     /**
