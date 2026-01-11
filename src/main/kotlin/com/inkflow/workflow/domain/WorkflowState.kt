@@ -41,6 +41,14 @@ data class WorkflowState(
     }
 
     /**
+     * 반려 단계로 전이한다.
+     */
+    fun reject(now: Instant): WorkflowState {
+        require(state == WorkflowStatus.REVIEWING) { "REVIEWING 상태에서만 REJECTED로 전이할 수 있습니다." }
+        return transitionTo(WorkflowStatus.REJECTED, now)
+    }
+
+    /**
      * 상태 전이와 버전 증가를 공통 처리한다.
      */
     private fun transitionTo(target: WorkflowStatus, now: Instant): WorkflowState {
