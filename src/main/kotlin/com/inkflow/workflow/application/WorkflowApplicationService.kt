@@ -1,7 +1,13 @@
 package com.inkflow.workflow.application
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.inkflow.common.error.BusinessException
 import com.inkflow.common.error.ErrorCode
+import com.inkflow.common.error.SystemException
+import com.inkflow.common.events.EventEnvelope
+import com.inkflow.common.outbox.domain.OutboxEvent
+import com.inkflow.common.outbox.domain.OutboxEventRepository
+import com.inkflow.workflow.domain.EpisodeQueryRepository
 import com.inkflow.workflow.domain.WorkflowAuditLog
 import com.inkflow.workflow.domain.WorkflowAuditLogRepository
 import com.inkflow.workflow.domain.WorkflowState
@@ -19,8 +25,15 @@ import java.time.Instant
 class WorkflowApplicationService(
     private val workflowStateRepository: WorkflowStateRepository,
     private val workflowAuditLogRepository: WorkflowAuditLogRepository,
+    private val episodeQueryRepository: EpisodeQueryRepository,
+    private val outboxEventRepository: OutboxEventRepository,
+    private val objectMapper: ObjectMapper,
     private val clock: Clock
 ) {
+    companion object {
+        private const val EVENT_PRODUCER = "workflow-orchestrator" // Outbox 이벤트 producer 식별자.
+        private const val AGGREGATE_TYPE_EPISODE = "EPISODE" // 에피소드 이벤트 aggregate 타입.
+    }
     /**
      * DRAFT → SUBMITTED 전이를 처리한다.
      */
@@ -38,6 +51,9 @@ class WorkflowApplicationService(
             reason = null,
             comment = null
         ) { state -> state.submit(now) }
+
+        // 제출 이벤트를 Outbox에 기록해 비동기 파이프라인을 시작한다.
+        recordEpisodeSubmittedEvent(command, updatedState)
         return updatedState.toResult()
     }
 
@@ -76,6 +92,9 @@ class WorkflowApplicationService(
             reason = null,
             comment = command.comment
         ) { state -> state.approve(now) }
+
+        // 승인 이벤트를 Outbox에 기록해 후속 처리를 트리거한다.
+        recordEpisodeApprovedEvent(command, updatedState)
         return updatedState.toResult()
     }
 
@@ -190,6 +209,100 @@ class WorkflowApplicationService(
             errorCode = ErrorCode.INVALID_STATE,
             message = message
         )
+    }
+
+    /**
+     * 제출 이벤트를 Outbox에 기록한다.
+     */
+    private fun recordEpisodeSubmittedEvent(
+        command: SubmitEpisodeCommand,
+        updatedState: WorkflowState
+    ) {
+        val workId = episodeQueryRepository.findWorkIdByEpisodeId(updatedState.episodeId)
+            ?: throw BusinessException(
+                errorCode = ErrorCode.NOT_FOUND,
+                details = mapOf("episodeId" to updatedState.episodeId.toString()),
+                message = "에피소드 정보를 찾을 수 없습니다."
+            )
+
+        val payload = EpisodeSubmittedEventPayload(
+            episodeId = updatedState.episodeId,
+            workId = workId,
+            submitterId = command.submitterId,
+            deadline = command.deadline
+        )
+
+        val envelope = EventEnvelope.create(
+            eventType = WorkflowEventTypes.EPISODE_SUBMITTED,
+            producer = EVENT_PRODUCER,
+            payload = payload,
+            idempotencyKey = buildIdempotencyKey(updatedState),
+            occurredAt = updatedState.updatedAt
+        )
+
+        val outboxEvent = OutboxEvent.pending(
+            aggregateType = AGGREGATE_TYPE_EPISODE,
+            aggregateId = updatedState.episodeId.toString(),
+            eventType = envelope.eventType.asString(),
+            payload = serializeEnvelope(envelope, updatedState.episodeId),
+            createdAt = updatedState.updatedAt
+        )
+        outboxEventRepository.save(outboxEvent)
+    }
+
+    /**
+     * 승인 이벤트를 Outbox에 기록한다.
+     */
+    private fun recordEpisodeApprovedEvent(
+        command: ApproveEpisodeCommand,
+        updatedState: WorkflowState
+    ) {
+        val payload = EpisodeApprovedEventPayload(
+            episodeId = updatedState.episodeId,
+            reviewerId = command.reviewerId,
+            approvedAt = updatedState.updatedAt
+        )
+
+        val envelope = EventEnvelope.create(
+            eventType = WorkflowEventTypes.EPISODE_APPROVED,
+            producer = EVENT_PRODUCER,
+            payload = payload,
+            idempotencyKey = buildIdempotencyKey(updatedState),
+            occurredAt = updatedState.updatedAt
+        )
+
+        val outboxEvent = OutboxEvent.pending(
+            aggregateType = AGGREGATE_TYPE_EPISODE,
+            aggregateId = updatedState.episodeId.toString(),
+            eventType = envelope.eventType.asString(),
+            payload = serializeEnvelope(envelope, updatedState.episodeId),
+            createdAt = updatedState.updatedAt
+        )
+
+        outboxEventRepository.save(outboxEvent)
+    }
+
+    /**
+     * Outbox payload 직렬화를 공통 처리한다.
+     */
+    private fun serializeEnvelope(envelope: EventEnvelope<*>, episodeId: Long): String {
+        return try {
+            objectMapper.writeValueAsString(envelope)
+        } catch (exception: Exception) {
+            throw SystemException(
+                errorCode = ErrorCode.INTERNAL_ERROR,
+                details = mapOf("episodeId" to episodeId.toString()),
+                message = "Outbox 이벤트 직렬화에 실패했습니다.",
+                cause = exception
+            )
+        }
+    }
+
+    /**
+     * 워크플로우 전이 중복 처리를 방지하기 위한 키를 생성한다.
+     */
+    private fun buildIdempotencyKey(state: WorkflowState): String {
+        return "${state.episodeId}:${state.version}"
     }
 
     /**
