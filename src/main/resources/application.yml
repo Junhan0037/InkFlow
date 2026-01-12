@@ -16,6 +16,12 @@ spring:
       port: ${SPRING_DATA_REDIS_PORT:6379}
 
 inkflow:
+  outbox:
+    relay:
+      enabled: ${INKFLOW_OUTBOX_RELAY_ENABLED:true}
+      batch-size: ${INKFLOW_OUTBOX_RELAY_BATCH_SIZE:100}
+      fixed-delay: ${INKFLOW_OUTBOX_RELAY_FIXED_DELAY:2s}
+      initial-delay: ${INKFLOW_OUTBOX_RELAY_INITIAL_DELAY:1s}
   upload:
     session:
       ttl: ${INKFLOW_UPLOAD_SESSION_TTL:30m}
