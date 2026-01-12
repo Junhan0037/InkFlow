@@ -2,8 +2,11 @@ package com.inkflow.workflow.application
 
 import com.inkflow.common.error.BusinessException
 import com.inkflow.common.error.ErrorCode
+import com.inkflow.workflow.domain.WorkflowAuditLog
+import com.inkflow.workflow.domain.WorkflowAuditLogRepository
 import com.inkflow.workflow.domain.WorkflowState
 import com.inkflow.workflow.domain.WorkflowStateRepository
+import com.inkflow.workflow.domain.WorkflowTransitionAction
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
@@ -15,6 +18,7 @@ import java.time.Instant
 @Service
 class WorkflowApplicationService(
     private val workflowStateRepository: WorkflowStateRepository,
+    private val workflowAuditLogRepository: WorkflowAuditLogRepository,
     private val clock: Clock
 ) {
     /**
@@ -27,7 +31,13 @@ class WorkflowApplicationService(
 
         val now = Instant.now(clock)
         validateDeadline(command.deadline, now)
-        val updatedState = transition(command.episodeId) { state -> state.submit(now) }
+        val updatedState = transition(
+            episodeId = command.episodeId,
+            actorId = command.submitterId,
+            action = WorkflowTransitionAction.SUBMIT,
+            reason = null,
+            comment = null
+        ) { state -> state.submit(now) }
         return updatedState.toResult()
     }
 
@@ -40,7 +50,13 @@ class WorkflowApplicationService(
         validateActor("reviewerId", command.reviewerId)
 
         val now = Instant.now(clock)
-        val updatedState = transition(command.episodeId) { state -> state.startReview(now) }
+        val updatedState = transition(
+            episodeId = command.episodeId,
+            actorId = command.reviewerId,
+            action = WorkflowTransitionAction.START_REVIEW,
+            reason = null,
+            comment = null
+        ) { state -> state.startReview(now) }
         return updatedState.toResult()
     }
 
@@ -53,7 +69,13 @@ class WorkflowApplicationService(
         validateActor("reviewerId", command.reviewerId)
 
         val now = Instant.now(clock)
-        val updatedState = transition(command.episodeId) { state -> state.approve(now) }
+        val updatedState = transition(
+            episodeId = command.episodeId,
+            actorId = command.reviewerId,
+            action = WorkflowTransitionAction.APPROVE,
+            reason = null,
+            comment = command.comment
+        ) { state -> state.approve(now) }
         return updatedState.toResult()
     }
 
@@ -67,7 +89,13 @@ class WorkflowApplicationService(
         validateReason(command.reason)
 
         val now = Instant.now(clock)
-        val updatedState = transition(command.episodeId) { state -> state.reject(now) }
+        val updatedState = transition(
+            episodeId = command.episodeId,
+            actorId = command.reviewerId,
+            action = WorkflowTransitionAction.REJECT,
+            reason = command.reason,
+            comment = null
+        ) { state -> state.reject(now) }
         return updatedState.toResult()
     }
 
@@ -76,6 +104,10 @@ class WorkflowApplicationService(
      */
     private fun transition(
         episodeId: Long,
+        actorId: String,
+        action: WorkflowTransitionAction,
+        reason: String?,
+        comment: String?,
         transition: (WorkflowState) -> WorkflowState
     ): WorkflowState {
         val current = loadState(episodeId)
@@ -85,7 +117,10 @@ class WorkflowApplicationService(
             // 도메인 전이 규칙 위반은 비즈니스 예외로 변환한다.
             throw invalidState(exception.message ?: "허용되지 않은 전이입니다.")
         }
-        return workflowStateRepository.save(updated)
+        val saved = workflowStateRepository.save(updated)
+        // 상태 전이 감사 로그를 남겨 추적성과 책임성을 확보한다.
+        recordAuditLog(current, saved, actorId, action, reason, comment)
+        return saved
     }
 
     /**
@@ -155,6 +190,32 @@ class WorkflowApplicationService(
             errorCode = ErrorCode.INVALID_STATE,
             message = message
         )
+    }
+
+    /**
+     * 워크플로우 상태 전이 감사 로그를 저장한다.
+     */
+    private fun recordAuditLog(
+        previous: WorkflowState,
+        current: WorkflowState,
+        actorId: String,
+        action: WorkflowTransitionAction,
+        reason: String?,
+        comment: String?
+    ) {
+        val auditLog = WorkflowAuditLog(
+            episodeId = current.episodeId,
+            actorId = actorId,
+            action = action,
+            fromState = previous.state,
+            toState = current.state,
+            fromVersion = previous.version,
+            toVersion = current.version,
+            reason = reason,
+            comment = comment,
+            occurredAt = current.updatedAt
+        )
+        workflowAuditLogRepository.save(auditLog)
     }
 
     /**
