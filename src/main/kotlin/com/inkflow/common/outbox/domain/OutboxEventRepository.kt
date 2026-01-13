@@ -15,7 +15,12 @@ interface OutboxEventRepository {
     /**
      * 전송 대기 중인 이벤트를 배치 단위로 조회하며, 중복 처리를 막기 위해 잠금을 획득한다.
      */
-    fun findPendingEventsForUpdate(limit: Int, now: Instant): List<OutboxEvent>
+    fun findPendingEventsForUpdate(limit: Int, now: Instant, lockExpiredBefore: Instant): List<OutboxEvent>
+
+    /**
+     * Outbox 이벤트를 전송 중 상태로 잠근다.
+     */
+    fun markSending(eventId: UUID, lockedAt: Instant)
 
     /**
      * Outbox 이벤트를 전송 완료 상태로 갱신한다.

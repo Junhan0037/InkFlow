@@ -25,9 +25,19 @@ class JpaOutboxEventRepository(
     /**
      * 전송 대기 이벤트를 배치로 가져오면서 DB 잠금을 획득한다.
      */
-    override fun findPendingEventsForUpdate(limit: Int, now: Instant): List<OutboxEvent> {
+    override fun findPendingEventsForUpdate(
+        limit: Int,
+        now: Instant,
+        lockExpiredBefore: Instant
+    ): List<OutboxEvent> {
         return outboxEventJpaRepository
-            .findPendingForUpdate(OutboxEventStatus.PENDING.name, now, limit)
+            .findPendingForUpdate(
+                pendingStatus = OutboxEventStatus.PENDING.name,
+                sendingStatus = OutboxEventStatus.SENDING.name,
+                now = now,
+                lockExpiredBefore = lockExpiredBefore,
+                limit = limit
+            )
             .map { it.toDomain() }
     }
 
@@ -36,6 +46,13 @@ class JpaOutboxEventRepository(
      */
     override fun markSent(eventId: UUID, sentAt: Instant) {
         outboxEventJpaRepository.updateSent(eventId, OutboxEventStatus.SENT.name, sentAt)
+    }
+
+    /**
+     * 이벤트를 전송 중 상태로 잠근다.
+     */
+    override fun markSending(eventId: UUID, lockedAt: Instant) {
+        outboxEventJpaRepository.updateSending(eventId, OutboxEventStatus.SENDING.name, lockedAt)
     }
 
     /**

@@ -18,7 +18,13 @@ interface OutboxEventJpaRepository : JpaRepository<OutboxEventEntity, UUID> {
         value = """
             SELECT *
             FROM outbox_event
-            WHERE status = :status
+            WHERE (
+                status = :pendingStatus
+                OR (
+                    status = :sendingStatus
+                    AND (locked_at IS NULL OR locked_at <= :lockExpiredBefore)
+                )
+            )
               AND (next_retry_at IS NULL OR next_retry_at <= :now)
             ORDER BY COALESCE(next_retry_at, created_at) ASC, created_at ASC
             LIMIT :limit
@@ -27,10 +33,32 @@ interface OutboxEventJpaRepository : JpaRepository<OutboxEventEntity, UUID> {
         nativeQuery = true
     )
     fun findPendingForUpdate(
-        @Param("status") status: String,
+        @Param("pendingStatus") pendingStatus: String,
+        @Param("sendingStatus") sendingStatus: String,
         @Param("now") now: Instant,
+        @Param("lockExpiredBefore") lockExpiredBefore: Instant,
         @Param("limit") limit: Int
     ): List<OutboxEventEntity>
+
+    /**
+     * 이벤트를 전송 중 상태로 잠근다.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(
+        value = """
+            UPDATE outbox_event
+            SET status = :status,
+                locked_at = :lockedAt,
+                last_error = NULL
+            WHERE id = :id
+        """,
+        nativeQuery = true
+    )
+    fun updateSending(
+        @Param("id") id: UUID,
+        @Param("status") status: String,
+        @Param("lockedAt") lockedAt: Instant
+    ): Int
 
     /**
      * 이벤트 상태와 전송 시간을 갱신한다.
@@ -42,6 +70,7 @@ interface OutboxEventJpaRepository : JpaRepository<OutboxEventEntity, UUID> {
             SET status = :status,
                 sent_at = :sentAt,
                 next_retry_at = NULL,
+                locked_at = NULL,
                 last_error = NULL
             WHERE id = :id
         """,
@@ -63,6 +92,7 @@ interface OutboxEventJpaRepository : JpaRepository<OutboxEventEntity, UUID> {
             SET status = :status,
                 retry_count = :retryCount,
                 next_retry_at = :nextRetryAt,
+                locked_at = NULL,
                 last_error = :lastError
             WHERE id = :id
         """,
@@ -85,6 +115,7 @@ interface OutboxEventJpaRepository : JpaRepository<OutboxEventEntity, UUID> {
             UPDATE outbox_event
             SET status = :status,
                 next_retry_at = NULL,
+                locked_at = NULL,
                 last_error = :lastError
             WHERE id = :id
         """,

@@ -49,6 +49,9 @@ class OutboxEventEntity(
     @Column(name = "last_error")
     var lastError: String? = null,
 
+    @Column(name = "locked_at")
+    var lockedAt: Instant? = null,
+
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.EPOCH,
 
@@ -69,6 +72,7 @@ class OutboxEventEntity(
             retryCount = retryCount,
             nextRetryAt = nextRetryAt,
             lastError = lastError,
+            lockedAt = lockedAt,
             createdAt = createdAt,
             sentAt = sentAt
         )
@@ -89,6 +93,7 @@ class OutboxEventEntity(
                 retryCount = event.retryCount,
                 nextRetryAt = event.nextRetryAt,
                 lastError = event.lastError,
+                lockedAt = event.lockedAt,
                 createdAt = event.createdAt,
                 sentAt = event.sentAt
             )

@@ -10,6 +10,11 @@ enum class OutboxEventStatus {
     PENDING,
 
     /**
+     * 전송 중으로 잠금이 획득된 상태.
+     */
+    SENDING,
+
+    /**
      * 전송 완료 상태.
      */
     SENT,

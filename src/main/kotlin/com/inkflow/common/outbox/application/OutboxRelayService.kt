@@ -5,7 +5,7 @@ import com.inkflow.common.outbox.domain.OutboxEvent
 import com.inkflow.common.outbox.domain.OutboxEventRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionTemplate
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 import kotlin.math.min
@@ -19,17 +19,18 @@ import kotlin.random.Random
 class OutboxRelayService(
     private val outboxEventRepository: OutboxEventRepository,
     private val outboxEventPublisher: OutboxEventPublisher,
-    private val properties: OutboxRelayProperties
+    private val properties: OutboxRelayProperties,
+    private val transactionTemplate: TransactionTemplate
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
     /**
      * Outbox 이벤트를 배치로 폴링하고 발행한다.
      */
-    @Transactional
     fun relayPendingEvents() {
         val now = Instant.now()
-        val pendingEvents = outboxEventRepository.findPendingEventsForUpdate(properties.batchSize, now)
+        val lockExpiredBefore = now.minus(properties.lockTimeout)
+        val pendingEvents = claimPendingEvents(now, lockExpiredBefore)
         if (pendingEvents.isEmpty()) {
             return
         }
@@ -41,12 +42,34 @@ class OutboxRelayService(
     }
 
     /**
+     * 전송 대상 이벤트를 잠금 처리해 중복 발행을 방지한다.
+     */
+    private fun claimPendingEvents(now: Instant, lockExpiredBefore: Instant): List<OutboxEvent> {
+        return transactionTemplate.execute { _ ->
+            val events = outboxEventRepository.findPendingEventsForUpdate(
+                limit = properties.batchSize,
+                now = now,
+                lockExpiredBefore = lockExpiredBefore
+            )
+            if (events.isEmpty()) {
+                return@execute emptyList()
+            }
+            events.forEach { event ->
+                outboxEventRepository.markSending(event.id, now)
+            }
+            events
+        } ?: emptyList()
+    }
+
+    /**
      * 이벤트 발행 결과에 따라 상태를 갱신한다.
      */
     private fun handleEvent(event: OutboxEvent) {
         try {
             outboxEventPublisher.publish(event)
-            outboxEventRepository.markSent(event.id, Instant.now())
+            transactionTemplate.executeWithoutResult {
+                outboxEventRepository.markSent(event.id, Instant.now())
+            }
             logger.info(
                 "Outbox 이벤트 발행 완료. eventId={}, eventType={}, aggregateType={}, aggregateId={}",
                 event.id,
@@ -67,7 +90,9 @@ class OutboxRelayService(
         val lastError = buildLastError(exception)
 
         if (!isRetryable(exception) || retryCount > properties.maxRetries) {
-            outboxEventRepository.markFailed(event.id, lastError)
+            transactionTemplate.executeWithoutResult {
+                outboxEventRepository.markFailed(event.id, lastError)
+            }
             logger.error(
                 "Outbox 이벤트 발행 실패(종료). eventId={}, eventType={}, aggregateType={}, aggregateId={}, retryCount={}",
                 event.id,
@@ -81,7 +106,9 @@ class OutboxRelayService(
         }
 
         val nextRetryAt = calculateNextRetryAt(Instant.now(), retryCount)
-        outboxEventRepository.markRetry(event.id, retryCount, nextRetryAt, lastError)
+        transactionTemplate.executeWithoutResult {
+            outboxEventRepository.markRetry(event.id, retryCount, nextRetryAt, lastError)
+        }
         logger.warn(
             "Outbox 이벤트 발행 실패(재시도 예정). eventId={}, eventType={}, aggregateType={}, aggregateId={}, retryCount={}, nextRetryAt={}",
             event.id,

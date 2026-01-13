@@ -16,6 +16,7 @@ data class OutboxEvent(
     val retryCount: Int,
     val nextRetryAt: Instant?,
     val lastError: String?,
+    val lockedAt: Instant?,
     val createdAt: Instant,
     val sentAt: Instant?
 ) {
@@ -52,6 +53,7 @@ data class OutboxEvent(
                 retryCount = 0,
                 nextRetryAt = null,
                 lastError = null,
+                lockedAt = null,
                 createdAt = createdAt,
                 sentAt = null
             )

@@ -25,6 +25,10 @@ data class OutboxRelayProperties(
      */
     var initialDelay: Duration = Duration.ofSeconds(1),
     /**
+     * 전송 중 잠금이 만료되는 시간을 지정한다.
+     */
+    var lockTimeout: Duration = Duration.ofMinutes(1),
+    /**
      * Outbox 재시도 최대 횟수를 지정한다.
      */
     var maxRetries: Int = 5,
@@ -47,6 +51,7 @@ data class OutboxRelayProperties(
 ) {
     init {
         require(batchSize > 0) { "batchSize는 1 이상이어야 합니다." }
+        require(lockTimeout.toMillis() > 0) { "lockTimeout은 0보다 커야 합니다." }
         require(maxRetries >= 0) { "maxRetries는 0 이상이어야 합니다." }
         require(retryInitialDelay.toMillis() > 0) { "retryInitialDelay는 0보다 커야 합니다." }
         require(retryMaxDelay >= retryInitialDelay) { "retryMaxDelay는 retryInitialDelay 이상이어야 합니다." }

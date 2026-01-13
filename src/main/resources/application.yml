@@ -51,6 +51,7 @@ inkflow:
       batch-size: ${INKFLOW_OUTBOX_RELAY_BATCH_SIZE:100}
       fixed-delay: ${INKFLOW_OUTBOX_RELAY_FIXED_DELAY:2s}
       initial-delay: ${INKFLOW_OUTBOX_RELAY_INITIAL_DELAY:1s}
+      lock-timeout: ${INKFLOW_OUTBOX_RELAY_LOCK_TIMEOUT:1m}
       max-retries: ${INKFLOW_OUTBOX_RELAY_MAX_RETRIES:5}
       retry-initial-delay: ${INKFLOW_OUTBOX_RELAY_RETRY_INITIAL_DELAY:2s}
       retry-max-delay: ${INKFLOW_OUTBOX_RELAY_RETRY_MAX_DELAY:1m}
