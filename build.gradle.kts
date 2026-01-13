@@ -31,6 +31,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-data-mongodb")
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
+    implementation("org.springframework.kafka:spring-kafka:3.3.11")
     implementation(project(":libs:common-error"))
     implementation(project(":libs:common-events"))
     implementation(project(":libs:common-security"))

@@ -14,8 +14,37 @@ spring:
     redis:
       host: ${SPRING_DATA_REDIS_HOST:localhost}
       port: ${SPRING_DATA_REDIS_PORT:6379}
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    client-id: ${SPRING_KAFKA_CLIENT_ID:inkflow-local}
+    admin:
+      auto-create: true
+    producer:
+      acks: all
+      retries: 3
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        enable.idempotence: true
 
 inkflow:
+  kafka:
+    enabled: ${INKFLOW_KAFKA_ENABLED:true}
+    replication-factor: ${INKFLOW_KAFKA_REPLICATION_FACTOR:1}
+    topics:
+      asset-events: ${INKFLOW_KAFKA_TOPIC_ASSET_EVENTS:asset.events}
+      workflow-events: ${INKFLOW_KAFKA_TOPIC_WORKFLOW_EVENTS:workflow.events}
+      media-jobs: ${INKFLOW_KAFKA_TOPIC_MEDIA_JOBS:media.jobs}
+      media-results: ${INKFLOW_KAFKA_TOPIC_MEDIA_RESULTS:media.results}
+      index-events: ${INKFLOW_KAFKA_TOPIC_INDEX_EVENTS:index.events}
+      dlq-prefix: ${INKFLOW_KAFKA_TOPIC_DLQ_PREFIX:dlq}
+    partitions:
+      asset-events: ${INKFLOW_KAFKA_PARTITIONS_ASSET_EVENTS:3}
+      workflow-events: ${INKFLOW_KAFKA_PARTITIONS_WORKFLOW_EVENTS:3}
+      media-jobs: ${INKFLOW_KAFKA_PARTITIONS_MEDIA_JOBS:6}
+      media-results: ${INKFLOW_KAFKA_PARTITIONS_MEDIA_RESULTS:3}
+      index-events: ${INKFLOW_KAFKA_PARTITIONS_INDEX_EVENTS:3}
+      dlq: ${INKFLOW_KAFKA_PARTITIONS_DLQ:1}
   outbox:
     relay:
       enabled: ${INKFLOW_OUTBOX_RELAY_ENABLED:true}
