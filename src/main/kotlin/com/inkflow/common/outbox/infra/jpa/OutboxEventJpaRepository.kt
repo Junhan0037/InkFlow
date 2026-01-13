@@ -19,7 +19,8 @@ interface OutboxEventJpaRepository : JpaRepository<OutboxEventEntity, UUID> {
             SELECT *
             FROM outbox_event
             WHERE status = :status
-            ORDER BY created_at ASC
+              AND (next_retry_at IS NULL OR next_retry_at <= :now)
+            ORDER BY COALESCE(next_retry_at, created_at) ASC, created_at ASC
             LIMIT :limit
             FOR UPDATE SKIP LOCKED
         """,
@@ -27,6 +28,7 @@ interface OutboxEventJpaRepository : JpaRepository<OutboxEventEntity, UUID> {
     )
     fun findPendingForUpdate(
         @Param("status") status: String,
+        @Param("now") now: Instant,
         @Param("limit") limit: Int
     ): List<OutboxEventEntity>
 
@@ -38,14 +40,59 @@ interface OutboxEventJpaRepository : JpaRepository<OutboxEventEntity, UUID> {
         value = """
             UPDATE outbox_event
             SET status = :status,
-                sent_at = :sentAt
+                sent_at = :sentAt,
+                next_retry_at = NULL,
+                last_error = NULL
             WHERE id = :id
         """,
         nativeQuery = true
     )
-    fun updateStatus(
+    fun updateSent(
         @Param("id") id: UUID,
         @Param("status") status: String,
         @Param("sentAt") sentAt: Instant?
+    ): Int
+
+    /**
+     * 이벤트를 재시도 대상으로 갱신한다.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(
+        value = """
+            UPDATE outbox_event
+            SET status = :status,
+                retry_count = :retryCount,
+                next_retry_at = :nextRetryAt,
+                last_error = :lastError
+            WHERE id = :id
+        """,
+        nativeQuery = true
+    )
+    fun updateForRetry(
+        @Param("id") id: UUID,
+        @Param("status") status: String,
+        @Param("retryCount") retryCount: Int,
+        @Param("nextRetryAt") nextRetryAt: Instant,
+        @Param("lastError") lastError: String?
+    ): Int
+
+    /**
+     * 이벤트를 실패 상태로 갱신한다.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(
+        value = """
+            UPDATE outbox_event
+            SET status = :status,
+                next_retry_at = NULL,
+                last_error = :lastError
+            WHERE id = :id
+        """,
+        nativeQuery = true
+    )
+    fun updateFailed(
+        @Param("id") id: UUID,
+        @Param("status") status: String,
+        @Param("lastError") lastError: String?
     ): Int
 }

@@ -40,6 +40,15 @@ class OutboxEventEntity(
     @Column(name = "status", nullable = false)
     var status: OutboxEventStatus = OutboxEventStatus.PENDING,
 
+    @Column(name = "retry_count", nullable = false)
+    var retryCount: Int = 0,
+
+    @Column(name = "next_retry_at")
+    var nextRetryAt: Instant? = null,
+
+    @Column(name = "last_error")
+    var lastError: String? = null,
+
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.EPOCH,
 
@@ -57,6 +66,9 @@ class OutboxEventEntity(
             eventType = eventType,
             payload = payload,
             status = status,
+            retryCount = retryCount,
+            nextRetryAt = nextRetryAt,
+            lastError = lastError,
             createdAt = createdAt,
             sentAt = sentAt
         )
@@ -74,6 +86,9 @@ class OutboxEventEntity(
                 eventType = event.eventType,
                 payload = event.payload,
                 status = event.status,
+                retryCount = event.retryCount,
+                nextRetryAt = event.nextRetryAt,
+                lastError = event.lastError,
                 createdAt = event.createdAt,
                 sentAt = event.sentAt
             )

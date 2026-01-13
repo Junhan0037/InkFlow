@@ -13,6 +13,9 @@ data class OutboxEvent(
     val eventType: String,
     val payload: String,
     val status: OutboxEventStatus,
+    val retryCount: Int,
+    val nextRetryAt: Instant?,
+    val lastError: String?,
     val createdAt: Instant,
     val sentAt: Instant?
 ) {
@@ -21,6 +24,10 @@ data class OutboxEvent(
         require(aggregateId.isNotBlank()) { "aggregateId는 비어 있을 수 없습니다." }
         require(eventType.isNotBlank()) { "eventType은 비어 있을 수 없습니다." }
         require(payload.isNotBlank()) { "payload는 비어 있을 수 없습니다." }
+        require(retryCount >= 0) { "retryCount는 0 이상이어야 합니다." }
+        if (lastError != null) {
+            require(lastError.isNotBlank()) { "lastError는 빈 문자열일 수 없습니다." }
+        }
     }
 
     companion object {
@@ -42,6 +49,9 @@ data class OutboxEvent(
                 eventType = eventType,
                 payload = payload,
                 status = OutboxEventStatus.PENDING,
+                retryCount = 0,
+                nextRetryAt = null,
+                lastError = null,
                 createdAt = createdAt,
                 sentAt = null
             )
