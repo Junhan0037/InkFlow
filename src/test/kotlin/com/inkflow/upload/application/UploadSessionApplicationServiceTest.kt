@@ -454,6 +454,50 @@ class UploadSessionApplicationServiceTest {
             events.add(event)
             return event
         }
+
+        /**
+         * 테스트에서는 Relay 처리를 하지 않으므로 빈 목록을 반환한다.
+         */
+        override fun findPendingEventsForUpdate(
+            limit: Int,
+            now: Instant,
+            lockExpiredBefore: Instant
+        ): List<OutboxEvent> {
+            return emptyList()
+        }
+
+        /**
+         * 테스트 범위에서 사용하지 않는 전송 중 갱신 동작.
+         */
+        override fun markSending(eventId: java.util.UUID, lockedAt: Instant) {
+            // 업로드 서비스 테스트에서는 전송 상태를 다루지 않는다.
+        }
+
+        /**
+         * 테스트 범위에서 사용하지 않는 전송 완료 갱신 동작.
+         */
+        override fun markSent(eventId: java.util.UUID, sentAt: Instant) {
+            // 업로드 서비스 테스트에서는 전송 상태를 다루지 않는다.
+        }
+
+        /**
+         * 테스트 범위에서 사용하지 않는 재시도 갱신 동작.
+         */
+        override fun markRetry(
+            eventId: java.util.UUID,
+            retryCount: Int,
+            nextRetryAt: Instant,
+            lastError: String?
+        ) {
+            // 업로드 서비스 테스트에서는 재시도 상태를 다루지 않는다.
+        }
+
+        /**
+         * 테스트 범위에서 사용하지 않는 실패 갱신 동작.
+         */
+        override fun markFailed(eventId: java.util.UUID, lastError: String?) {
+            // 업로드 서비스 테스트에서는 실패 상태를 다루지 않는다.
+        }
     }
 
     /**
