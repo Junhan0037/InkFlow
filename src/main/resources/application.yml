@@ -82,3 +82,15 @@ inkflow:
       ttl: ${INKFLOW_UPLOAD_IDEMPOTENCY_TTL:1h}
       redis:
         key-prefix: ${INKFLOW_UPLOAD_IDEMPOTENCY_KEY_PREFIX:upload:idempotency:}
+  media:
+    storage:
+      endpoint: ${INKFLOW_MEDIA_STORAGE_ENDPOINT:http://localhost:9000}
+      access-key: ${INKFLOW_MEDIA_STORAGE_ACCESS_KEY:inkflow}
+      secret-key: ${INKFLOW_MEDIA_STORAGE_SECRET_KEY:inkflow_pw}
+      region: ${INKFLOW_MEDIA_STORAGE_REGION:}
+    thumbnail:
+      storage-bucket: ${INKFLOW_MEDIA_THUMBNAIL_BUCKET:}
+      storage-key-prefix: ${INKFLOW_MEDIA_THUMBNAIL_KEY_PREFIX:derivatives/thumbnails/}
+      jpeg-quality: ${INKFLOW_MEDIA_THUMBNAIL_JPEG_QUALITY:0.85}
+      background-color: ${INKFLOW_MEDIA_THUMBNAIL_BACKGROUND_COLOR:#FFFFFF}
+      allowed-formats: ${INKFLOW_MEDIA_THUMBNAIL_ALLOWED_FORMATS:jpg,jpeg,png}
