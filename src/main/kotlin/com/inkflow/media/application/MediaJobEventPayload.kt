@@ -1,6 +1,7 @@
 package com.inkflow.media.application
 
 import com.inkflow.common.events.EventType
+import com.inkflow.media.domain.DerivativeStatus
 
 /**
  * Media 작업 이벤트 타입 정의.
@@ -10,6 +11,11 @@ object MediaJobEventTypes {
      * Media 작업 생성 이벤트 타입.
      */
     val MEDIA_JOB_CREATED: EventType = EventType.of("MEDIA_JOB_CREATED", 1)
+
+    /**
+     * Media 작업 완료 이벤트 타입.
+     */
+    val MEDIA_JOB_COMPLETED: EventType = EventType.of("MEDIA_JOB_COMPLETED", 1)
 }
 
 /**
@@ -25,6 +31,24 @@ data class MediaJobCreatedEventPayload(
         require(jobId.isNotBlank()) { "jobId는 비어 있을 수 없습니다." }
         require(assetId > 0) { "assetId는 0보다 커야 합니다." }
         require(derivativeType.isNotBlank()) { "derivativeType은 비어 있을 수 없습니다." }
+    }
+}
+
+/**
+ * Media 작업 완료 이벤트 payload.
+ */
+data class MediaJobCompletedEventPayload(
+    val jobId: String,
+    val assetId: Long,
+    val derivativeId: Long,
+    val status: DerivativeStatus,
+    val durationMs: Long
+) {
+    init {
+        require(jobId.isNotBlank()) { "jobId는 비어 있을 수 없습니다." }
+        require(assetId > 0) { "assetId는 0보다 커야 합니다." }
+        require(derivativeId > 0) { "derivativeId는 0보다 커야 합니다." }
+        require(durationMs >= 0) { "durationMs는 음수일 수 없습니다." }
     }
 }
 

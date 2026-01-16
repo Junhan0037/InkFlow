@@ -3,13 +3,15 @@ package com.inkflow.media.application
 import com.inkflow.common.error.BusinessException
 import com.inkflow.common.error.ErrorCode
 import com.inkflow.common.error.SystemException
-import com.inkflow.media.application.MediaDerivativeType.THUMBNAIL
+import com.inkflow.media.domain.DerivativeType
+import com.inkflow.media.domain.DerivativeType.THUMBNAIL
 import com.inkflow.upload.domain.AssetMetadata
 import com.inkflow.upload.domain.AssetMetadataRepository
 import com.inkflow.upload.domain.AssetStatus
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 /**
  * Media 작업 요청을 처리하는 애플리케이션 서비스.
@@ -19,7 +21,8 @@ class MediaJobApplicationService(
     private val assetMetadataRepository: AssetMetadataRepository,
     private val mediaStorageClient: MediaStorageClient,
     private val mediaImageProcessor: MediaImageProcessor,
-    private val thumbnailProperties: MediaThumbnailProperties
+    private val thumbnailProperties: MediaThumbnailProperties,
+    private val mediaDerivativeResultService: MediaDerivativeResultService
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -27,10 +30,14 @@ class MediaJobApplicationService(
      * Media 작업을 수신해 처리 파이프라인으로 전달한다.
      */
     fun handleJob(command: MediaJobCommand, metadata: MediaJobMessageMetadata) {
-        val derivativeType = MediaDerivativeType.from(command.derivativeType)
+        val derivativeType = DerivativeType.from(command.derivativeType)
             ?: throw invalidDerivativeType(command.derivativeType)
         when (derivativeType) {
             THUMBNAIL -> handleThumbnail(command, metadata)
+            DerivativeType.RESIZED,
+            DerivativeType.TRANSCODED -> {
+                throw unsupportedDerivativeType(derivativeType)
+            }
         }
     }
 
@@ -38,6 +45,7 @@ class MediaJobApplicationService(
      * 썸네일 생성 파이프라인을 실행한다.
      */
     private fun handleThumbnail(command: MediaJobCommand, metadata: MediaJobMessageMetadata) {
+        val startedAt = System.nanoTime()
         logger.info(
             "썸네일 생성 작업 시작. jobId={}, assetId={}, eventId={}, traceId={}",
             command.jobId,
@@ -63,13 +71,26 @@ class MediaJobApplicationService(
             bytes = thumbnailResult.bytes
         )
 
+        val durationMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt)
+
+        // 파생 메타 저장과 결과 이벤트 기록을 Outbox 트랜잭션으로 묶어 정합성을 확보한다.
+        val savedDerivative = mediaDerivativeResultService.recordThumbnailResult(
+            command = command,
+            metadata = metadata,
+            storageKey = targetKey,
+            thumbnailResult = thumbnailResult,
+            durationMs = durationMs
+        )
+
         logger.info(
-            "썸네일 생성 완료. jobId={}, assetId={}, bucket={}, key={}, sizeBytes={}",
+            "썸네일 생성 완료. jobId={}, assetId={}, bucket={}, key={}, sizeBytes={}, derivativeId={}, durationMs={}",
             command.jobId,
             assetId,
             targetBucket,
             targetKey,
-            thumbnailResult.bytes.size
+            thumbnailResult.bytes.size,
+            savedDerivative.id,
+            durationMs
         )
     }
 
@@ -136,6 +157,17 @@ class MediaJobApplicationService(
             errorCode = ErrorCode.INVALID_REQUEST,
             details = mapOf("derivativeType" to derivativeType),
             message = "지원하지 않는 파생 타입입니다."
+        )
+    }
+
+    /**
+     * 아직 구현되지 않은 파생 타입을 처리한다.
+     */
+    private fun unsupportedDerivativeType(derivativeType: DerivativeType): BusinessException {
+        return BusinessException(
+            errorCode = ErrorCode.INVALID_REQUEST,
+            details = mapOf("derivativeType" to derivativeType.name),
+            message = "아직 지원하지 않는 파생 타입입니다."
         )
     }
 
