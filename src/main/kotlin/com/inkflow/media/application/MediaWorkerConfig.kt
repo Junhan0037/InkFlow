@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Configuration
 @Configuration
 @EnableConfigurationProperties(
     MediaStorageProperties::class,
-    MediaThumbnailProperties::class
+    MediaThumbnailProperties::class,
+    MediaJobRetryProperties::class
 )
 class MediaWorkerConfig
