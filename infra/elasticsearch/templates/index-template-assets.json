@@ -1,0 +1,75 @@
+{
+  "index_patterns": ["assets_v*"],
+  "priority": 200,
+  "template": {
+    "settings": {
+      "index": {
+        "number_of_shards": 1,
+        "number_of_replicas": 0,
+        "refresh_interval": "1s",
+        "analysis": {
+          "normalizer": {
+            "lowercase_normalizer": {
+              "type": "custom",
+              "filter": ["lowercase"]
+            }
+          }
+        }
+      }
+    },
+    "mappings": {
+      "dynamic": "strict",
+      "properties": {
+        "id": {
+          "type": "long"
+        },
+        "episodeId": {
+          "type": "long"
+        },
+        "workId": {
+          "type": "long"
+        },
+        "creatorId": {
+          "type": "keyword"
+        },
+        "uploadId": {
+          "type": "keyword"
+        },
+        "fileName": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "normalizer": "lowercase_normalizer",
+              "ignore_above": 256
+            }
+          }
+        },
+        "contentType": {
+          "type": "keyword"
+        },
+        "size": {
+          "type": "long"
+        },
+        "checksum": {
+          "type": "keyword"
+        },
+        "storageBucket": {
+          "type": "keyword"
+        },
+        "storageKey": {
+          "type": "keyword"
+        },
+        "status": {
+          "type": "keyword"
+        },
+        "createdAt": {
+          "type": "date"
+        },
+        "updatedAt": {
+          "type": "date"
+        }
+      }
+    }
+  }
+}

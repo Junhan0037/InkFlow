@@ -1,0 +1,80 @@
+{
+  "index_patterns": ["works_v*"],
+  "priority": 200,
+  "template": {
+    "settings": {
+      "index": {
+        "number_of_shards": 1,
+        "number_of_replicas": 0,
+        "refresh_interval": "1s",
+        "analysis": {
+          "normalizer": {
+            "lowercase_normalizer": {
+              "type": "custom",
+              "filter": ["lowercase"]
+            }
+          }
+        }
+      }
+    },
+    "mappings": {
+      "dynamic": "strict",
+      "properties": {
+        "id": {
+          "type": "long"
+        },
+        "title": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "normalizer": "lowercase_normalizer",
+              "ignore_above": 256
+            }
+          }
+        },
+        "creatorId": {
+          "type": "keyword"
+        },
+        "creatorName": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "normalizer": "lowercase_normalizer",
+              "ignore_above": 256
+            }
+          }
+        },
+        "status": {
+          "type": "keyword"
+        },
+        "defaultLanguage": {
+          "type": "keyword"
+        },
+        "regions": {
+          "type": "keyword"
+        },
+        "genres": {
+          "type": "keyword",
+          "normalizer": "lowercase_normalizer",
+          "ignore_above": 128
+        },
+        "tags": {
+          "type": "keyword",
+          "normalizer": "lowercase_normalizer",
+          "ignore_above": 128
+        },
+        "description": {
+          "type": "text"
+        },
+        "createdAt": {
+          "type": "date"
+        },
+        "updatedAt": {
+          "type": "date"
+        }
+      }
+    }
+  }
+}
