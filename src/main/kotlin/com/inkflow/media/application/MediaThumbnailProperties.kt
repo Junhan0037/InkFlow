@@ -14,7 +14,6 @@ data class MediaThumbnailProperties(
     val allowedFormats: List<String> = listOf("jpg", "jpeg", "png")
 ) {
     init {
-        require(storageBucket?.isNotBlank() ?: true) { "storageBucket은 비어 있을 수 없습니다." }
         require(storageKeyPrefix.isNotBlank()) { "storageKeyPrefix는 비어 있을 수 없습니다." }
         require(jpegQuality in 0.0..1.0) { "jpegQuality는 0.0에서 1.0 사이여야 합니다." }
         require(backgroundColor.isNotBlank()) { "backgroundColor는 비어 있을 수 없습니다." }
