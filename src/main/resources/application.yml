@@ -94,3 +94,10 @@ inkflow:
       jpeg-quality: ${INKFLOW_MEDIA_THUMBNAIL_JPEG_QUALITY:0.85}
       background-color: ${INKFLOW_MEDIA_THUMBNAIL_BACKGROUND_COLOR:#FFFFFF}
       allowed-formats: ${INKFLOW_MEDIA_THUMBNAIL_ALLOWED_FORMATS:jpg,jpeg,png}
+  indexing:
+    enabled: ${INKFLOW_INDEXING_ENABLED:true}
+    base-url: ${INKFLOW_INDEXING_BASE_URL:http://localhost:9200}
+    indices:
+      works: ${INKFLOW_INDEXING_WORKS_INDEX:works_write}
+      episodes: ${INKFLOW_INDEXING_EPISODES_INDEX:episodes_write}
+      assets: ${INKFLOW_INDEXING_ASSETS_INDEX:assets_write}
