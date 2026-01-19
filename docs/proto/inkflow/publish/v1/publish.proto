@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package inkflow.publish.v1;
+
+// Java 코드 생성을 위한 기본 옵션을 정의한다.
+option java_multiple_files = true;
+option java_package = "com.inkflow.publish.v1";
+option java_outer_classname = "PublishProto";
+
+// 퍼블리시 스냅샷 생성/롤백을 담당하는 서비스 인터페이스다.
+service PublishService {
+  // 퍼블리시 스냅샷을 생성한다.
+  rpc CreateSnapshot (CreateSnapshotRequest) returns (CreateSnapshotResponse);
+  // 특정 버전으로 롤백한다.
+  rpc Rollback (RollbackRequest) returns (RollbackResponse);
+}
+
+// 퍼블리시 스냅샷 생성 요청
+message CreateSnapshotRequest {
+  int64 episode_id = 1; // 대상 에피소드 ID
+  string region = 2; // 퍼블리시 지역 코드
+  string language = 3; // 퍼블리시 언어 코드
+  string request_id = 4; // 멱등성 키
+}
+
+// 퍼블리시 스냅샷 생성 응답
+message CreateSnapshotResponse {
+  string snapshot_id = 1; // 생성된 스냅샷 ID
+  int64 publish_version = 2; // 퍼블리시 버전
+}
+
+// 롤백 요청
+message RollbackRequest {
+  int64 episode_id = 1; // 대상 에피소드 ID
+  int64 publish_version = 2; // 롤백할 퍼블리시 버전
+  string request_id = 3; // 멱등성 키
+}
+
+// 롤백 응답
+message RollbackResponse {
+  bool success = 1; // 성공 여부
+}

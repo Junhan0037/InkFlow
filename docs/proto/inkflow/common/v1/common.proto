@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package inkflow.common.v1;
+
+// Java 코드 생성을 위한 기본 옵션을 정의한다.
+option java_multiple_files = true;
+option java_package = "com.inkflow.common.v1";
+option java_outer_classname = "CommonProto";
+
+// 요청 컨텍스트(멱등성/트레이싱/행위자) 정보를 표준화한다.
+message RequestContext {
+  string request_id = 1; // 멱등성 키 또는 요청 ID
+  string trace_id = 2; // 분산 트레이싱 ID
+  string actor_id = 3; // 요청 주체(creator/admin)
+}
+
+// 공통 에러 정보를 표준화한다.
+message Error {
+  string code = 1; // 오류 코드(예: INVALID_STATE)
+  string message = 2; // 사용자 노출 가능한 메시지
+  map<string, string> details = 3; // 추가 메타 정보
+}

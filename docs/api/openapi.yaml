@@ -1,0 +1,383 @@
+# InkFlow REST API 문서(초안)
+# - 표준 응답 envelope와 핵심 엔드포인트만 우선 정의한다.
+openapi: 3.0.3
+info:
+  title: InkFlow API
+  version: 0.1.0
+  description: |
+    InkFlow REST API 명세 초안입니다.
+    표준 응답 envelope를 기준으로 동작합니다.
+servers:
+  - url: http://localhost:8080
+    description: 로컬 개발 서버
+tags:
+  - name: Upload
+    description: 업로드 세션 및 자산 관련 API
+  - name: Workflow
+    description: 워크플로우 전이 관련 API
+
+paths:
+  /uploads:
+    post:
+      tags: [Upload]
+      summary: 업로드 세션 생성
+      description: 세션 기반 multipart 업로드를 위한 presigned URL을 발급합니다.
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+          description: 멱등성 키(중복 요청 방지)
+        - in: header
+          name: X-Request-Id
+          required: false
+          schema:
+            type: string
+          description: 요청 추적용 ID
+        - in: header
+          name: X-Trace-Id
+          required: false
+          schema:
+            type: string
+          description: 분산 트레이싱 ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadInitRequest"
+            examples:
+              default:
+                value:
+                  episodeId: 1001
+                  filename: episode-1.zip
+                  contentType: application/zip
+                  size: 10485760
+                  checksum: sha256:...
+                  totalParts: 10
+      responses:
+        "200":
+          description: 업로드 세션 생성 성공
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadInitEnvelope"
+              examples:
+                default:
+                  value:
+                    requestId: req-1234
+                    code: OK
+                    message: success
+                    data:
+                      uploadId: upl_123
+                      chunkSize: 5242880
+                      presignedUrls:
+                        - partNumber: 1
+                          url: https://...
+                      expiresAt: "2025-01-01T00:30:00Z"
+
+  /uploads/{uploadId}/complete:
+    post:
+      tags: [Upload]
+      summary: 업로드 완료
+      description: multipart 업로드 완료와 체크섬 검증을 수행합니다.
+      parameters:
+        - in: path
+          name: uploadId
+          required: true
+          schema:
+            type: string
+          description: 업로드 세션 ID
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+          description: 멱등성 키(중복 요청 방지)
+        - in: header
+          name: X-Request-Id
+          required: false
+          schema:
+            type: string
+          description: 요청 추적용 ID
+        - in: header
+          name: X-Trace-Id
+          required: false
+          schema:
+            type: string
+          description: 분산 트레이싱 ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadCompleteRequest"
+            examples:
+              default:
+                value:
+                  uploadedParts:
+                    - partNumber: 1
+                      etag: "\"etag-value\""
+                  checksum: sha256:...
+      responses:
+        "200":
+          description: 업로드 완료 성공
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadCompleteEnvelope"
+              examples:
+                default:
+                  value:
+                    requestId: req-1234
+                    code: OK
+                    message: success
+                    data:
+                      assetId: 1001
+                      status: STORED
+
+  /episodes/{episodeId}/submit:
+    post:
+      tags: [Workflow]
+      summary: 에피소드 제출
+      description: 에피소드 상태를 SUBMITTED로 전이합니다.
+      parameters:
+        - in: path
+          name: episodeId
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: 에피소드 ID
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+          description: 멱등성 키(중복 요청 방지)
+        - in: header
+          name: X-Request-Id
+          required: false
+          schema:
+            type: string
+          description: 요청 추적용 ID
+        - in: header
+          name: X-Trace-Id
+          required: false
+          schema:
+            type: string
+          description: 분산 트레이싱 ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkflowSubmitRequest"
+            examples:
+              default:
+                value:
+                  deadline: "2025-02-01T00:00:00Z"
+      responses:
+        "200":
+          description: 상태 전이 성공
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowStateEnvelope"
+              examples:
+                default:
+                  value:
+                    requestId: req-5678
+                    code: OK
+                    message: success
+                    data:
+                      episodeId: 2001
+                      state: SUBMITTED
+                      version: 2
+
+components:
+  schemas:
+    # 공통 응답 envelope 정의
+    UploadInitEnvelope:
+      type: object
+      required: [requestId, code, message, data]
+      properties:
+        requestId:
+          type: string
+          description: 요청 식별자
+        code:
+          type: string
+          description: 응답 코드(예: OK)
+        message:
+          type: string
+          description: 응답 메시지
+        data:
+          $ref: "#/components/schemas/UploadInitResponse"
+
+    UploadCompleteEnvelope:
+      type: object
+      required: [requestId, code, message, data]
+      properties:
+        requestId:
+          type: string
+          description: 요청 식별자
+        code:
+          type: string
+          description: 응답 코드(예: OK)
+        message:
+          type: string
+          description: 응답 메시지
+        data:
+          $ref: "#/components/schemas/UploadCompleteResponse"
+
+    WorkflowStateEnvelope:
+      type: object
+      required: [requestId, code, message, data]
+      properties:
+        requestId:
+          type: string
+          description: 요청 식별자
+        code:
+          type: string
+          description: 응답 코드(예: OK)
+        message:
+          type: string
+          description: 응답 메시지
+        data:
+          $ref: "#/components/schemas/WorkflowStateResponse"
+
+    # 업로드 세션 생성 요청
+    UploadInitRequest:
+      type: object
+      required: [episodeId, filename, contentType, size, checksum, totalParts]
+      properties:
+        episodeId:
+          type: integer
+          format: int64
+          description: 에피소드 ID
+        filename:
+          type: string
+          description: 원본 파일명
+        contentType:
+          type: string
+          description: MIME 타입
+        size:
+          type: integer
+          format: int64
+          description: 파일 크기(Bytes)
+        checksum:
+          type: string
+          description: 체크섬(예: sha256)
+        totalParts:
+          type: integer
+          description: multipart 총 파트 수
+
+    # 업로드 세션 생성 응답
+    UploadInitResponse:
+      type: object
+      required: [uploadId, chunkSize, presignedUrls, expiresAt]
+      properties:
+        uploadId:
+          type: string
+          description: 업로드 세션 ID
+        chunkSize:
+          type: integer
+          format: int64
+          description: 단일 청크 크기(Bytes)
+        presignedUrls:
+          type: array
+          items:
+            $ref: "#/components/schemas/PresignedPart"
+          description: presigned URL 목록
+        expiresAt:
+          type: string
+          format: date-time
+          description: presigned URL 만료 시각(UTC)
+
+    # presigned URL 파트 정보
+    PresignedPart:
+      type: object
+      required: [partNumber, url]
+      properties:
+        partNumber:
+          type: integer
+          description: 파트 번호(1부터 시작)
+        url:
+          type: string
+          description: 업로드 URL
+
+    # 업로드 완료 요청
+    UploadCompleteRequest:
+      type: object
+      required: [uploadedParts, checksum]
+      properties:
+        uploadedParts:
+          type: array
+          items:
+            $ref: "#/components/schemas/UploadedPart"
+          description: 업로드 완료 파트 목록
+        checksum:
+          type: string
+          description: 체크섬(최종 검증용)
+
+    # 업로드 완료 파트 정보
+    UploadedPart:
+      type: object
+      required: [partNumber, etag]
+      properties:
+        partNumber:
+          type: integer
+          description: 파트 번호
+        etag:
+          type: string
+          description: 스토리지 ETag 값
+
+    # 업로드 완료 응답
+    UploadCompleteResponse:
+      type: object
+      required: [assetId, status]
+      properties:
+        assetId:
+          type: integer
+          format: int64
+          description: 생성된 자산 ID
+        status:
+          type: string
+          description: 자산 상태(예: STORED)
+
+    # 워크플로우 제출 요청
+    WorkflowSubmitRequest:
+      type: object
+      required: [deadline]
+      properties:
+        deadline:
+          type: string
+          format: date-time
+          description: 마감 시각(UTC)
+
+    # 워크플로우 상태 응답
+    WorkflowStateResponse:
+      type: object
+      required: [episodeId, state, version]
+      properties:
+        episodeId:
+          type: integer
+          format: int64
+          description: 에피소드 ID
+        state:
+          type: string
+          description: 상태 값
+          enum:
+            - DRAFT
+            - SUBMITTED
+            - REVIEWING
+            - APPROVED
+            - REJECTED
+            - PUBLISHING
+            - PUBLISHED
+            - ROLLED_BACK
+        version:
+          type: integer
+          format: int64
+          description: 상태 스냅샷 버전(낙관적 잠금)
