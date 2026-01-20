@@ -1,14 +1,20 @@
+import com.google.protobuf.gradle.*
+
 plugins {
     kotlin("jvm") version "1.9.25"
     kotlin("plugin.spring") version "1.9.25"
     kotlin("plugin.jpa") version "1.9.25"
     id("org.springframework.boot") version "3.5.9"
     id("io.spring.dependency-management") version "1.1.7"
+    id("com.google.protobuf") version "0.9.4"
 }
 
 group = "com"
 version = "0.0.1-SNAPSHOT"
 description = "InkFlow"
+
+val grpcVersion = "1.64.0"
+val protobufVersion = "3.25.3"
 
 java {
     toolchain {
@@ -35,7 +41,13 @@ dependencies {
     implementation("io.minio:minio:8.5.12")
     implementation(project(":libs:common-error"))
     implementation(project(":libs:common-events"))
+    implementation(project(":libs:common-grpc"))
     implementation(project(":libs:common-security"))
+    implementation("io.grpc:grpc-netty-shaded:$grpcVersion")
+    implementation("io.grpc:grpc-protobuf:$grpcVersion")
+    implementation("io.grpc:grpc-stub:$grpcVersion")
+    implementation("com.google.protobuf:protobuf-java:$protobufVersion")
+    implementation("javax.annotation:javax.annotation-api:1.3.2")
     implementation("org.flywaydb:flyway-core")
     implementation("org.flywaydb:flyway-database-postgresql")
     runtimeOnly("org.postgresql:postgresql")
@@ -59,4 +71,30 @@ kotlin {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:$protobufVersion"
+    }
+    plugins {
+        id("grpc") {
+            artifact = "io.grpc:protoc-gen-grpc-java:$grpcVersion"
+        }
+    }
+    generateProtoTasks {
+        all().forEach { task ->
+            task.plugins {
+                id("grpc")
+            }
+        }
+    }
+}
+
+sourceSets {
+    main {
+        proto {
+            srcDir("docs/proto")
+        }
+    }
 }

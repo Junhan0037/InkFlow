@@ -117,3 +117,7 @@ inkflow:
       works: ${INKFLOW_INDEXING_WORKS_INDEX:works_write}
       episodes: ${INKFLOW_INDEXING_EPISODES_INDEX:episodes_write}
       assets: ${INKFLOW_INDEXING_ASSETS_INDEX:assets_write}
+  publish:
+    grpc:
+      port: ${INKFLOW_PUBLISH_GRPC_PORT:9091}
+      shutdown-timeout: ${INKFLOW_PUBLISH_GRPC_SHUTDOWN_TIMEOUT:5s}
