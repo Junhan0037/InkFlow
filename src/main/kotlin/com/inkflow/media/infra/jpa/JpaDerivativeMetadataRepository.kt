@@ -4,6 +4,7 @@ import com.inkflow.common.error.BusinessException
 import com.inkflow.common.error.ErrorCode
 import com.inkflow.media.domain.DerivativeMetadata
 import com.inkflow.media.domain.DerivativeMetadataRepository
+import com.inkflow.media.domain.DerivativeType
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Repository
 
@@ -34,5 +35,20 @@ class JpaDerivativeMetadataRepository(
                 message = "이미 존재하는 Derivative 메타데이터입니다."
             )
         }
+    }
+
+    /**
+     * 동일 스펙의 파생 메타데이터를 조회한다.
+     */
+    override fun findBySpec(
+        assetId: Long,
+        type: DerivativeType,
+        width: Int?,
+        height: Int?,
+        format: String
+    ): DerivativeMetadata? {
+        return derivativeMetadataJpaRepository
+            .findByAssetIdAndTypeAndWidthAndHeightAndFormat(assetId, type, width, height, format)
+            ?.toDomain()
     }
 }

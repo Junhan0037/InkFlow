@@ -1,7 +1,5 @@
-package com.inkflow.upload.infra.redis
+package com.inkflow.common.idempotency
 
-import com.inkflow.upload.domain.IdempotencyKeyRepository
-import com.inkflow.upload.domain.IdempotencyRecord
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Repository
 import java.time.Duration
@@ -47,6 +45,6 @@ class RedisIdempotencyKeyRepository(
      * Redis 저장용 키를 표준 prefix와 결합한다.
      */
     private fun resolveKey(key: String): String {
-        return "${properties.keyPrefix}${key}"
+        return "${properties.keyPrefix}$key"
     }
 }

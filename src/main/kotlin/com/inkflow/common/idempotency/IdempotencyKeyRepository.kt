@@ -1,4 +1,4 @@
-package com.inkflow.upload.domain
+package com.inkflow.common.idempotency
 
 import java.time.Duration
 

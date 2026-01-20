@@ -3,6 +3,7 @@ package com.inkflow.media.application
 import com.inkflow.common.error.BusinessException
 import com.inkflow.common.error.ErrorCode
 import com.inkflow.common.events.EventObjectMapperFactory
+import com.inkflow.common.idempotency.InMemoryIdempotencyKeyRepository
 import com.inkflow.common.outbox.domain.OutboxEvent
 import com.inkflow.common.outbox.domain.OutboxEventRepository
 import com.inkflow.media.domain.DerivativeMetadata
@@ -60,16 +61,23 @@ class MediaJobApplicationServiceTest {
             objectMapper = objectMapper,
             clock = fixedClock
         )
+        val idempotencyService = MediaJobIdempotencyService(
+            idempotencyKeyRepository = InMemoryIdempotencyKeyRepository(),
+            properties = MediaJobIdempotencyProperties(),
+            clock = fixedClock
+        )
         val thumbnailProperties = MediaThumbnailProperties(
             storageBucket = "derived-bucket",
             storageKeyPrefix = "thumbs"
         )
         val service = MediaJobApplicationService(
             assetMetadataRepository = assetRepository,
+            derivativeMetadataRepository = derivativeRepository,
             mediaStorageClient = storageClient,
             mediaImageProcessor = imageProcessor,
             thumbnailProperties = thumbnailProperties,
-            mediaDerivativeResultService = derivativeResultService
+            mediaDerivativeResultService = derivativeResultService,
+            mediaJobIdempotencyService = idempotencyService
         )
         val command = MediaJobCommand(
             jobId = "job-1",
@@ -251,12 +259,19 @@ class MediaJobApplicationServiceTest {
             objectMapper = EventObjectMapperFactory.defaultObjectMapper(),
             clock = fixedClock
         )
+        val idempotencyService = MediaJobIdempotencyService(
+            idempotencyKeyRepository = InMemoryIdempotencyKeyRepository(),
+            properties = MediaJobIdempotencyProperties(),
+            clock = fixedClock
+        )
         return MediaJobApplicationService(
             assetMetadataRepository = assetRepository,
+            derivativeMetadataRepository = derivativeRepository,
             mediaStorageClient = storageClient,
             mediaImageProcessor = imageProcessor,
             thumbnailProperties = MediaThumbnailProperties(),
-            mediaDerivativeResultService = derivativeResultService
+            mediaDerivativeResultService = derivativeResultService,
+            mediaJobIdempotencyService = idempotencyService
         )
     }
 
@@ -363,6 +378,25 @@ class MediaJobApplicationServiceTest {
             val stored = derivative.copy(id = (saved.size + 1).toLong())
             saved.add(stored)
             return stored
+        }
+
+        /**
+         * 테스트 환경에서는 동일 스펙 조회를 지원하지 않는다.
+         */
+        override fun findBySpec(
+            assetId: Long,
+            type: com.inkflow.media.domain.DerivativeType,
+            width: Int?,
+            height: Int?,
+            format: String
+        ): DerivativeMetadata? {
+            return saved.firstOrNull {
+                it.assetId == assetId &&
+                    it.type == type &&
+                    it.width == width &&
+                    it.height == height &&
+                    it.format == format
+            }
         }
     }
 

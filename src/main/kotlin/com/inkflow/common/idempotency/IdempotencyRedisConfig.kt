@@ -1,7 +1,6 @@
-package com.inkflow.upload.infra.redis
+package com.inkflow.common.idempotency
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.inkflow.upload.domain.IdempotencyRecord
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -11,7 +10,7 @@ import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer
 import org.springframework.data.redis.serializer.StringRedisSerializer
 
 /**
- * Idempotency 키 Redis 저장소에 필요한 Bean 구성을 제공한다.
+ * Idempotency 키 Redis 저장소에 필요한 Bean 구성을 제공.
  */
 @Configuration
 @EnableConfigurationProperties(IdempotencyRedisProperties::class)

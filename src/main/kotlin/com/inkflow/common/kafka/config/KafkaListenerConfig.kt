@@ -1,6 +1,7 @@
 package com.inkflow.common.kafka.config
 
 import com.inkflow.common.error.BusinessException
+import com.inkflow.common.idempotency.ConsumerIdempotencyProperties
 import org.apache.kafka.common.TopicPartition
 import org.springframework.boot.autoconfigure.kafka.ConcurrentKafkaListenerContainerFactoryConfigurer
 import org.springframework.boot.context.properties.EnableConfigurationProperties
@@ -17,7 +18,11 @@ import org.springframework.kafka.listener.DefaultErrorHandler
  * Kafka 컨슈머 공통 에러 처리와 DLQ 발행을 설정.
  */
 @Configuration
-@EnableConfigurationProperties(InkflowKafkaProperties::class, KafkaRetryProperties::class)
+@EnableConfigurationProperties(
+    InkflowKafkaProperties::class,
+    KafkaRetryProperties::class,
+    ConsumerIdempotencyProperties::class
+)
 class KafkaListenerConfig(
     private val kafkaProperties: InkflowKafkaProperties,
     private val retryProperties: KafkaRetryProperties

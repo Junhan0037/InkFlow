@@ -3,8 +3,10 @@ package com.inkflow.media.application
 import com.inkflow.common.error.BusinessException
 import com.inkflow.common.error.ErrorCode
 import com.inkflow.common.error.SystemException
+import com.inkflow.common.idempotency.IdempotencyDecision
 import com.inkflow.media.domain.DerivativeType
 import com.inkflow.media.domain.DerivativeType.THUMBNAIL
+import com.inkflow.media.domain.DerivativeMetadataRepository
 import com.inkflow.upload.domain.AssetMetadata
 import com.inkflow.upload.domain.AssetMetadataRepository
 import com.inkflow.upload.domain.AssetStatus
@@ -19,10 +21,12 @@ import java.util.concurrent.TimeUnit
 @Service
 class MediaJobApplicationService(
     private val assetMetadataRepository: AssetMetadataRepository,
+    private val derivativeMetadataRepository: DerivativeMetadataRepository,
     private val mediaStorageClient: MediaStorageClient,
     private val mediaImageProcessor: MediaImageProcessor,
     private val thumbnailProperties: MediaThumbnailProperties,
-    private val mediaDerivativeResultService: MediaDerivativeResultService
+    private val mediaDerivativeResultService: MediaDerivativeResultService,
+    private val mediaJobIdempotencyService: MediaJobIdempotencyService
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -55,43 +59,87 @@ class MediaJobApplicationService(
         )
         val asset = assetMetadataRepository.findById(command.assetId)
             ?: throw missingAsset(command.assetId)
+        val assetId = asset.id ?: throw missingAssetId(command.assetId)
         validateAssetForThumbnail(asset)
 
-        val sourceLocation = MediaStorageLocation(asset.storageBucket, asset.storageKey)
-        val originalObject = mediaStorageClient.download(sourceLocation)
-        val thumbnailResult = mediaImageProcessor.createThumbnail(originalObject.bytes, command.spec)
-
-        val assetId = asset.id ?: throw missingAssetId(command.assetId)
-        val targetBucket = thumbnailProperties.storageBucket?.takeIf { it.isNotBlank() } ?: asset.storageBucket
-        val targetKey = buildThumbnailKey(assetId, command.jobId, thumbnailResult)
-
-        mediaStorageClient.upload(
-            location = MediaStorageLocation(targetBucket, targetKey),
-            contentType = thumbnailResult.contentType,
-            bytes = thumbnailResult.bytes
+        val idempotencyKey = MediaJobIdempotencyKeys.forDerivative(
+            assetId = assetId,
+            contentHash = asset.checksum,
+            derivativeType = command.derivativeType,
+            spec = command.spec
         )
-
-        val durationMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt)
-
-        // 파생 메타 저장과 결과 이벤트 기록을 Outbox 트랜잭션으로 묶어 정합성을 확보한다.
-        val savedDerivative = mediaDerivativeResultService.recordThumbnailResult(
-            command = command,
-            metadata = metadata,
-            storageKey = targetKey,
-            thumbnailResult = thumbnailResult,
-            durationMs = durationMs
+        // 기존 파생 메타가 존재하면 중복 작업을 수행하지 않는다.
+        val existingDerivative = derivativeMetadataRepository.findBySpec(
+            assetId = assetId,
+            type = DerivativeType.THUMBNAIL,
+            width = command.spec.width,
+            height = command.spec.height,
+            format = command.spec.format
         )
+        if (existingDerivative != null) {
+            logger.info(
+                "이미 처리된 썸네일 작업이므로 재처리를 건너뜁니다. jobId={}, assetId={}, derivativeId={}",
+                command.jobId,
+                assetId,
+                existingDerivative.id
+            )
+            mediaJobIdempotencyService.markCompleted(idempotencyKey)
+            return
+        }
 
-        logger.info(
-            "썸네일 생성 완료. jobId={}, assetId={}, bucket={}, key={}, sizeBytes={}, derivativeId={}, durationMs={}",
-            command.jobId,
-            assetId,
-            targetBucket,
-            targetKey,
-            thumbnailResult.bytes.size,
-            savedDerivative.id,
-            durationMs
-        )
+        val idempotencyDecision = mediaJobIdempotencyService.tryBegin(idempotencyKey)
+        if (idempotencyDecision != IdempotencyDecision.STARTED) {
+            // 동일 콘텐츠+스펙 작업 중복 처리를 방지한다.
+            logger.info(
+                "썸네일 작업이 이미 처리 중/완료 상태입니다. jobId={}, assetId={}, decision={}",
+                command.jobId,
+                assetId,
+                idempotencyDecision
+            )
+            return
+        }
+
+        try {
+            val sourceLocation = MediaStorageLocation(asset.storageBucket, asset.storageKey)
+            val originalObject = mediaStorageClient.download(sourceLocation)
+            val thumbnailResult = mediaImageProcessor.createThumbnail(originalObject.bytes, command.spec)
+
+            val targetBucket = thumbnailProperties.storageBucket?.takeIf { it.isNotBlank() } ?: asset.storageBucket
+            val targetKey = buildThumbnailKey(assetId, command.jobId, thumbnailResult)
+
+            mediaStorageClient.upload(
+                location = MediaStorageLocation(targetBucket, targetKey),
+                contentType = thumbnailResult.contentType,
+                bytes = thumbnailResult.bytes
+            )
+
+            val durationMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt)
+
+            // 파생 메타 저장과 결과 이벤트 기록을 Outbox 트랜잭션으로 묶어 정합성을 확보한다.
+            val savedDerivative = mediaDerivativeResultService.recordThumbnailResult(
+                command = command,
+                metadata = metadata,
+                storageKey = targetKey,
+                thumbnailResult = thumbnailResult,
+                durationMs = durationMs
+            )
+            mediaJobIdempotencyService.markCompleted(idempotencyKey)
+
+            logger.info(
+                "썸네일 생성 완료. jobId={}, assetId={}, bucket={}, key={}, sizeBytes={}, derivativeId={}, durationMs={}",
+                command.jobId,
+                assetId,
+                targetBucket,
+                targetKey,
+                thumbnailResult.bytes.size,
+                savedDerivative.id,
+                durationMs
+            )
+        } catch (exception: Exception) {
+            // 실패 시 동일 작업 재시도를 허용하도록 멱등성 기록을 제거한다.
+            mediaJobIdempotencyService.markFailed(idempotencyKey)
+            throw exception
+        }
     }
 
     /**

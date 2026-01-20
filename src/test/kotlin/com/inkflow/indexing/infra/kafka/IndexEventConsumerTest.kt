@@ -6,6 +6,9 @@ import com.inkflow.common.error.SystemException
 import com.inkflow.common.events.EventEnvelope
 import com.inkflow.common.events.EventObjectMapperFactory
 import com.inkflow.common.events.EventType
+import com.inkflow.common.idempotency.ConsumerIdempotencyProperties
+import com.inkflow.common.idempotency.ConsumerIdempotencyService
+import com.inkflow.common.idempotency.InMemoryIdempotencyKeyRepository
 import com.inkflow.indexing.application.IndexEventTypes
 import com.inkflow.indexing.application.IndexRequestedEventPayload
 import com.inkflow.indexing.application.IndexingApplicationService
@@ -13,10 +16,12 @@ import com.inkflow.indexing.application.IndexingCommand
 import com.inkflow.indexing.application.IndexingMessageMetadata
 import com.inkflow.indexing.domain.IndexEntityType
 import com.inkflow.indexing.domain.IndexOperation
+import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito
+import java.time.Clock
 import java.time.Instant
 import java.util.UUID
 
@@ -33,7 +38,7 @@ class IndexEventConsumerTest {
     @Test
     fun consume_ignoresNonTargetEventType() {
         val service = Mockito.mock(IndexingApplicationService::class.java)
-        val consumer = IndexEventConsumer(objectMapper, service)
+        val consumer = IndexEventConsumer(objectMapper, service, buildIdempotencyService())
         val message = buildMessage(eventType = EventType.of("WORK_UPDATED", 1))
 
         consumer.consume(message)
@@ -47,7 +52,7 @@ class IndexEventConsumerTest {
     @Test
     fun consume_dispatchesIndexRequest() {
         val service = Mockito.mock(IndexingApplicationService::class.java)
-        val consumer = IndexEventConsumer(objectMapper, service)
+        val consumer = IndexEventConsumer(objectMapper, service, buildIdempotencyService())
         val payload = IndexRequestedEventPayload(
             entityType = IndexEntityType.ASSET,
             entityId = 10L,
@@ -77,7 +82,7 @@ class IndexEventConsumerTest {
     @Test
     fun consume_swallowBusinessException() {
         val service = Mockito.mock(IndexingApplicationService::class.java)
-        val consumer = IndexEventConsumer(objectMapper, service)
+        val consumer = IndexEventConsumer(objectMapper, service, buildIdempotencyService())
         val payload = buildPayload()
         val eventId = UUID.fromString("00000000-0000-0000-0000-000000000202")
         val message = buildMessage(IndexEventTypes.INDEX_REQUESTED, payload, eventId)
@@ -103,7 +108,7 @@ class IndexEventConsumerTest {
     @Test
     fun consume_rethrowsSystemException() {
         val service = Mockito.mock(IndexingApplicationService::class.java)
-        val consumer = IndexEventConsumer(objectMapper, service)
+        val consumer = IndexEventConsumer(objectMapper, service, buildIdempotencyService())
         val payload = buildPayload()
         val eventId = UUID.fromString("00000000-0000-0000-0000-000000000203")
         val message = buildMessage(IndexEventTypes.INDEX_REQUESTED, payload, eventId)
@@ -135,13 +140,13 @@ class IndexEventConsumerTest {
     }
 
     /**
-     * 테스트용 Kafka 메시지 JSON을 생성한다.
+     * 테스트용 Kafka 메시지를 생성한다.
      */
     private fun buildMessage(
         eventType: EventType,
         payload: IndexRequestedEventPayload = buildPayload(),
         eventId: UUID = UUID.fromString("00000000-0000-0000-0000-000000000200")
-    ): String {
+    ): ConsumerRecord<String, String> {
         val envelope = EventEnvelope.create(
             eventType = eventType,
             producer = "indexing-test",
@@ -151,6 +156,18 @@ class IndexEventConsumerTest {
             eventId = eventId,
             occurredAt = baseTime
         )
-        return objectMapper.writeValueAsString(envelope)
+        val message = objectMapper.writeValueAsString(envelope)
+        return ConsumerRecord("index.events", 0, 0L, "key-1", message)
+    }
+
+    /**
+     * 테스트용 컨슈머 멱등성 서비스를 생성한다.
+     */
+    private fun buildIdempotencyService(): ConsumerIdempotencyService {
+        return ConsumerIdempotencyService(
+            idempotencyKeyRepository = InMemoryIdempotencyKeyRepository(),
+            properties = ConsumerIdempotencyProperties(),
+            clock = Clock.systemUTC()
+        )
     }
 }

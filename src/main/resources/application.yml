@@ -32,6 +32,9 @@ spring:
         enable.idempotence: true
 
 inkflow:
+  idempotency:
+    redis:
+      key-prefix: ${INKFLOW_IDEMPOTENCY_KEY_PREFIX:idempotency:}
   kafka:
     enabled: ${INKFLOW_KAFKA_ENABLED:true}
     replication-factor: ${INKFLOW_KAFKA_REPLICATION_FACTOR:1}
@@ -56,6 +59,10 @@ inkflow:
       multiplier: ${INKFLOW_KAFKA_RETRY_MULTIPLIER:2.0}
     consumer:
       dlq-group-id: ${INKFLOW_KAFKA_DLQ_GROUP_ID:dlq-consumer}
+      idempotency:
+        processing-ttl: ${INKFLOW_KAFKA_CONSUMER_IDEMPOTENCY_PROCESSING_TTL:10m}
+        completed-ttl: ${INKFLOW_KAFKA_CONSUMER_IDEMPOTENCY_COMPLETED_TTL:24h}
+        key-prefix: ${INKFLOW_KAFKA_CONSUMER_IDEMPOTENCY_KEY_PREFIX:consumer:}
   outbox:
     relay:
       enabled: ${INKFLOW_OUTBOX_RELAY_ENABLED:true}
@@ -87,8 +94,6 @@ inkflow:
       ttl: ${INKFLOW_UPLOAD_DOWNLOAD_TTL:10m}
     idempotency:
       ttl: ${INKFLOW_UPLOAD_IDEMPOTENCY_TTL:1h}
-      redis:
-        key-prefix: ${INKFLOW_UPLOAD_IDEMPOTENCY_KEY_PREFIX:upload:idempotency:}
   media:
     storage:
       endpoint: ${INKFLOW_MEDIA_STORAGE_ENDPOINT:http://localhost:9000}
@@ -101,6 +106,10 @@ inkflow:
       jpeg-quality: ${INKFLOW_MEDIA_THUMBNAIL_JPEG_QUALITY:0.85}
       background-color: ${INKFLOW_MEDIA_THUMBNAIL_BACKGROUND_COLOR:#FFFFFF}
       allowed-formats: ${INKFLOW_MEDIA_THUMBNAIL_ALLOWED_FORMATS:jpg,jpeg,png}
+    idempotency:
+      processing-ttl: ${INKFLOW_MEDIA_IDEMPOTENCY_PROCESSING_TTL:30m}
+      completed-ttl: ${INKFLOW_MEDIA_IDEMPOTENCY_COMPLETED_TTL:7d}
+      key-prefix: ${INKFLOW_MEDIA_IDEMPOTENCY_KEY_PREFIX:media:job:}
   indexing:
     enabled: ${INKFLOW_INDEXING_ENABLED:true}
     base-url: ${INKFLOW_INDEXING_BASE_URL:http://localhost:9200}

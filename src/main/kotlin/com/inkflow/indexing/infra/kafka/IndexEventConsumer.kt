@@ -5,6 +5,8 @@ import com.inkflow.common.error.BusinessException
 import com.inkflow.common.error.ErrorCode
 import com.inkflow.common.error.SystemException
 import com.inkflow.common.events.EventEnvelope
+import com.inkflow.common.idempotency.ConsumerIdempotencyService
+import com.inkflow.common.idempotency.IdempotencyDecision
 import com.inkflow.indexing.application.IndexEventTypes
 import com.inkflow.indexing.application.IndexRequestedEventPayload
 import com.inkflow.indexing.application.IndexingApplicationService
@@ -24,9 +26,11 @@ import org.springframework.stereotype.Component
 @ConditionalOnProperty(prefix = "inkflow.indexing", name = ["enabled"], havingValue = "true", matchIfMissing = true)
 class IndexEventConsumer(
     private val objectMapper: ObjectMapper,
-    private val indexingApplicationService: IndexingApplicationService
+    private val indexingApplicationService: IndexingApplicationService,
+    private val consumerIdempotencyService: ConsumerIdempotencyService
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
+    private val consumerName = "indexing-service"
 
     /**
      * 색인 요청 이벤트를 수신해 처리 서비스로 전달한다.
@@ -53,10 +57,22 @@ class IndexEventConsumer(
             traceId = envelope.traceId,
             idempotencyKey = envelope.idempotencyKey
         )
+        val idempotencyDecision = consumerIdempotencyService.tryBegin(consumerName, envelope.eventId)
+        if (idempotencyDecision != IdempotencyDecision.STARTED) {
+            // 이미 처리된 이벤트는 중복 처리를 건너뛴다.
+            logger.info(
+                "색인 이벤트가 이미 처리 중/완료 상태입니다. eventId={}, decision={}",
+                envelope.eventId,
+                idempotencyDecision
+            )
+            return
+        }
         try {
             indexingApplicationService.handleIndexRequest(command, metadata)
+            consumerIdempotencyService.markCompleted(consumerName, envelope.eventId)
         } catch (exception: BusinessException) {
             // 비즈니스 오류는 재시도하지 않고 DLQ로 전달한다.
+            consumerIdempotencyService.markFailed(consumerName, envelope.eventId)
             logger.warn(
                 "색인 처리 중 비즈니스 오류가 발생했습니다. entityType={}, entityId={}, eventId={}, errorCode={}",
                 command.entityType,
@@ -67,6 +83,7 @@ class IndexEventConsumer(
             throw exception
         } catch (exception: Exception) {
             // 시스템 오류는 Kafka 재시도를 위해 예외를 전파한다.
+            consumerIdempotencyService.markFailed(consumerName, envelope.eventId)
             logger.error(
                 "색인 처리 중 시스템 오류가 발생했습니다. entityType={}, entityId={}, eventId={}",
                 command.entityType,

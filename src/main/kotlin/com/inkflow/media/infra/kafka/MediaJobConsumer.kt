@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.inkflow.common.error.ErrorCode
 import com.inkflow.common.error.SystemException
 import com.inkflow.common.events.EventEnvelope
+import com.inkflow.common.idempotency.ConsumerIdempotencyService
+import com.inkflow.common.idempotency.IdempotencyDecision
 import com.inkflow.common.kafka.dlq.DlqPublisher
 import com.inkflow.media.application.MediaJobApplicationService
 import com.inkflow.media.application.MediaJobCommand
@@ -26,9 +28,11 @@ class MediaJobConsumer(
     private val objectMapper: ObjectMapper,
     private val mediaJobApplicationService: MediaJobApplicationService,
     private val mediaJobFailureHandler: MediaJobFailureHandler,
-    private val dlqPublisher: DlqPublisher
+    private val dlqPublisher: DlqPublisher,
+    private val consumerIdempotencyService: ConsumerIdempotencyService
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
+    private val consumerName = "media-worker"
 
     /**
      * Media 작업 생성 이벤트를 수신해 처리 서비스로 전달한다.
@@ -55,9 +59,23 @@ class MediaJobConsumer(
             traceId = envelope.traceId,
             idempotencyKey = envelope.idempotencyKey
         )
+        val idempotencyDecision = consumerIdempotencyService.tryBegin(consumerName, envelope.eventId)
+
+        if (idempotencyDecision != IdempotencyDecision.STARTED) {
+            // 중복 이벤트는 처리하지 않고 종료한다.
+            logger.info(
+                "Media 작업 이벤트가 이미 처리 중/완료 상태입니다. eventId={}, decision={}",
+                envelope.eventId,
+                idempotencyDecision
+            )
+            return
+        }
+
         try {
             mediaJobApplicationService.handleJob(command, metadata)
+            consumerIdempotencyService.markCompleted(consumerName, envelope.eventId)
         } catch (exception: Exception) {
+            consumerIdempotencyService.markFailed(consumerName, envelope.eventId)
             // 실패 로그 저장 및 재시도 기준을 적용한 후 재시도 여부에 따라 예외를 전파한다.
             val decision = mediaJobFailureHandler.handleFailure(command, metadata, exception)
 

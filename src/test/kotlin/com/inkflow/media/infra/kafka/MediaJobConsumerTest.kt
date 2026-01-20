@@ -6,6 +6,10 @@ import com.inkflow.common.error.SystemException
 import com.inkflow.common.events.EventEnvelope
 import com.inkflow.common.events.EventObjectMapperFactory
 import com.inkflow.common.events.EventType
+import com.inkflow.common.idempotency.ConsumerIdempotencyProperties
+import com.inkflow.common.idempotency.ConsumerIdempotencyService
+import com.inkflow.common.idempotency.InMemoryIdempotencyKeyRepository
+import com.inkflow.common.kafka.dlq.DlqPublisher
 import com.inkflow.common.outbox.domain.OutboxEvent
 import com.inkflow.common.outbox.domain.OutboxEventRepository
 import com.inkflow.media.application.MediaDerivativeResultService
@@ -16,6 +20,8 @@ import com.inkflow.media.application.MediaJobEventTypes
 import com.inkflow.media.application.MediaJobFailureHandler
 import com.inkflow.media.application.MediaJobRetryPolicy
 import com.inkflow.media.application.MediaJobRetryProperties
+import com.inkflow.media.application.MediaJobIdempotencyProperties
+import com.inkflow.media.application.MediaJobIdempotencyService
 import com.inkflow.media.application.MediaJobSpec
 import com.inkflow.media.application.MediaStorageClient
 import com.inkflow.media.application.MediaStorageLocation
@@ -29,6 +35,8 @@ import com.inkflow.media.domain.MediaJobFailureLogRepository
 import com.inkflow.upload.domain.AssetMetadata
 import com.inkflow.upload.domain.AssetMetadataRepository
 import com.inkflow.upload.domain.AssetStatus
+import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.kafka.common.TopicPartition
 import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -39,6 +47,9 @@ import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
 import java.util.UUID
+import org.mockito.Mockito
+import org.springframework.kafka.core.KafkaTemplate
+import org.springframework.kafka.listener.DeadLetterPublishingRecoverer
 
 /**
  * MediaJobConsumer의 이벤트 분기와 실패 처리 흐름을 검증한다.
@@ -125,12 +136,19 @@ class MediaJobConsumerTest {
             objectMapper = objectMapper,
             clock = clock
         )
+        val mediaJobIdempotencyService = MediaJobIdempotencyService(
+            idempotencyKeyRepository = InMemoryIdempotencyKeyRepository(),
+            properties = MediaJobIdempotencyProperties(),
+            clock = clock
+        )
         val mediaJobService = MediaJobApplicationService(
             assetMetadataRepository = assetRepository,
+            derivativeMetadataRepository = derivativeRepository,
             mediaStorageClient = storageClient,
             mediaImageProcessor = mediaImageProcessor,
             thumbnailProperties = MediaThumbnailProperties(),
-            mediaDerivativeResultService = derivativeResultService
+            mediaDerivativeResultService = derivativeResultService,
+            mediaJobIdempotencyService = mediaJobIdempotencyService
         )
         val failureLogRepository = InMemoryMediaJobFailureLogRepository()
         val retryPolicy = MediaJobRetryPolicy(MediaJobRetryProperties(maxAttempts = 3))
@@ -139,10 +157,18 @@ class MediaJobConsumerTest {
             retryPolicy = retryPolicy,
             clock = clock
         )
+        val consumerIdempotencyService = ConsumerIdempotencyService(
+            idempotencyKeyRepository = InMemoryIdempotencyKeyRepository(),
+            properties = ConsumerIdempotencyProperties(),
+            clock = clock
+        )
+        val dlqPublisher = buildDlqPublisher()
         val consumer = MediaJobConsumer(
             objectMapper = objectMapper,
             mediaJobApplicationService = mediaJobService,
-            mediaJobFailureHandler = failureHandler
+            mediaJobFailureHandler = failureHandler,
+            dlqPublisher = dlqPublisher,
+            consumerIdempotencyService = consumerIdempotencyService
         )
         return ConsumerFixture(
             consumer = consumer,
@@ -153,9 +179,9 @@ class MediaJobConsumerTest {
     }
 
     /**
-     * Kafka 메시지 JSON을 생성한다.
+     * Kafka 메시지를 생성한다.
      */
-    private fun buildMessage(eventType: EventType): String {
+    private fun buildMessage(eventType: EventType): ConsumerRecord<String, String> {
         val payload = MediaJobCreatedEventPayload(
             jobId = "job-1",
             assetId = 10L,
@@ -171,7 +197,8 @@ class MediaJobConsumerTest {
             eventId = UUID.fromString("00000000-0000-0000-0000-000000000444"),
             occurredAt = baseTime
         )
-        return objectMapper.writeValueAsString(envelope)
+        val message = objectMapper.writeValueAsString(envelope)
+        return ConsumerRecord("media.jobs", 0, 0L, "key-1", message)
     }
 
     /**
@@ -193,6 +220,18 @@ class MediaJobConsumerTest {
             createdAt = baseTime,
             updatedAt = baseTime
         )
+    }
+
+    /**
+     * 테스트에서 사용하는 DLQ 퍼블리셔를 생성한다.
+     */
+    private fun buildDlqPublisher(): DlqPublisher {
+        @Suppress("UNCHECKED_CAST")
+        val kafkaTemplate = Mockito.mock(KafkaTemplate::class.java) as KafkaTemplate<String, String>
+        val recoverer = DeadLetterPublishingRecoverer(kafkaTemplate) { _, _ ->
+            TopicPartition("dlq.media.jobs", 0)
+        }
+        return DlqPublisher(recoverer)
     }
 
     /**
@@ -316,6 +355,25 @@ class MediaJobConsumerTest {
             val stored = derivative.copy(id = (saved.size + 1).toLong())
             saved.add(stored)
             return stored
+        }
+
+        /**
+         * 동일 스펙의 파생 메타를 조회한다.
+         */
+        override fun findBySpec(
+            assetId: Long,
+            type: com.inkflow.media.domain.DerivativeType,
+            width: Int?,
+            height: Int?,
+            format: String
+        ): DerivativeMetadata? {
+            return saved.firstOrNull {
+                it.assetId == assetId &&
+                    it.type == type &&
+                    it.width == width &&
+                    it.height == height &&
+                    it.format == format
+            }
         }
     }
 

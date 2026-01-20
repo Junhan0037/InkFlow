@@ -161,6 +161,25 @@ class MediaDerivativeResultServiceTest {
             saved.add(stored)
             return stored
         }
+
+        /**
+         * 테스트에서는 동일 스펙 조회를 사용하지 않는다.
+         */
+        override fun findBySpec(
+            assetId: Long,
+            type: com.inkflow.media.domain.DerivativeType,
+            width: Int?,
+            height: Int?,
+            format: String
+        ): DerivativeMetadata? {
+            return saved.firstOrNull {
+                it.assetId == assetId &&
+                    it.type == type &&
+                    it.width == width &&
+                    it.height == height &&
+                    it.format == format
+            }
+        }
     }
 
     /**

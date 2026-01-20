@@ -4,9 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.inkflow.common.error.BusinessException
 import com.inkflow.common.error.ErrorCode
 import com.inkflow.common.error.SystemException
-import com.inkflow.upload.domain.IdempotencyKeyRepository
-import com.inkflow.upload.domain.IdempotencyRecord
-import com.inkflow.upload.domain.IdempotencyStatus
+import com.inkflow.common.idempotency.IdempotencyKeyRepository
+import com.inkflow.common.idempotency.IdempotencyRecord
+import com.inkflow.common.idempotency.IdempotencyStatus
 import org.springframework.stereotype.Service
 import java.time.Clock
 import java.time.Instant
