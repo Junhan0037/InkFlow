@@ -4,12 +4,14 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.inkflow.common.error.ErrorCode
 import com.inkflow.common.error.SystemException
 import com.inkflow.common.events.EventEnvelope
+import com.inkflow.common.kafka.dlq.DlqPublisher
 import com.inkflow.media.application.MediaJobApplicationService
 import com.inkflow.media.application.MediaJobCommand
 import com.inkflow.media.application.MediaJobCreatedEventPayload
 import com.inkflow.media.application.MediaJobEventTypes
 import com.inkflow.media.application.MediaJobFailureHandler
 import com.inkflow.media.application.MediaJobMessageMetadata
+import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.kafka.annotation.KafkaListener
@@ -23,7 +25,8 @@ import org.springframework.stereotype.Component
 class MediaJobConsumer(
     private val objectMapper: ObjectMapper,
     private val mediaJobApplicationService: MediaJobApplicationService,
-    private val mediaJobFailureHandler: MediaJobFailureHandler
+    private val mediaJobFailureHandler: MediaJobFailureHandler,
+    private val dlqPublisher: DlqPublisher
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -34,8 +37,8 @@ class MediaJobConsumer(
         topics = ["\${inkflow.kafka.topics.media-jobs}"],
         groupId = "\${inkflow.kafka.consumer.group-id:media-worker}"
     )
-    fun consume(message: String) {
-        val envelope = deserializeEnvelope(message)
+    fun consume(record: ConsumerRecord<String, String>) {
+        val envelope = deserializeEnvelope(record.value(), record.topic())
         if (envelope.eventType != MediaJobEventTypes.MEDIA_JOB_CREATED) {
             // 예상하지 않은 이벤트 타입은 로그만 남기고 무시한다.
             logger.warn(
@@ -57,6 +60,7 @@ class MediaJobConsumer(
         } catch (exception: Exception) {
             // 실패 로그 저장 및 재시도 기준을 적용한 후 재시도 여부에 따라 예외를 전파한다.
             val decision = mediaJobFailureHandler.handleFailure(command, metadata, exception)
+
             logger.error(
                 "Media 작업 처리 실패. jobId={}, assetId={}, derivativeType={}, shouldRetry={}, reason={}",
                 command.jobId,
@@ -66,16 +70,20 @@ class MediaJobConsumer(
                 decision.reason,
                 exception
             )
+
             if (decision.shouldRetry) {
                 throw exception
             }
+
+            // 영구 실패는 DLQ에 적재해 운영자가 재처리할 수 있도록 한다.
+            dlqPublisher.publish(record, exception)
         }
     }
 
     /**
      * Kafka 메시지를 EventEnvelope로 역직렬화한다.
      */
-    private fun deserializeEnvelope(message: String): EventEnvelope<MediaJobCreatedEventPayload> {
+    private fun deserializeEnvelope(message: String, topic: String): EventEnvelope<MediaJobCreatedEventPayload> {
         return try {
             val javaType = objectMapper.typeFactory
                 .constructParametricType(EventEnvelope::class.java, MediaJobCreatedEventPayload::class.java)
@@ -83,7 +91,7 @@ class MediaJobConsumer(
         } catch (exception: Exception) {
             throw SystemException(
                 errorCode = ErrorCode.INTERNAL_ERROR,
-                details = mapOf("topic" to "media.jobs"),
+                details = mapOf("topic" to topic),
                 message = "Media 작업 이벤트 역직렬화에 실패했습니다.",
                 cause = exception
             )

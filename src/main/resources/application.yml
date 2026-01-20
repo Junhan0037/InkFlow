@@ -49,6 +49,13 @@ inkflow:
       media-results: ${INKFLOW_KAFKA_PARTITIONS_MEDIA_RESULTS:3}
       index-events: ${INKFLOW_KAFKA_PARTITIONS_INDEX_EVENTS:3}
       dlq: ${INKFLOW_KAFKA_PARTITIONS_DLQ:1}
+    retry:
+      max-retries: ${INKFLOW_KAFKA_RETRY_MAX_RETRIES:3}
+      initial-interval: ${INKFLOW_KAFKA_RETRY_INITIAL_INTERVAL:1s}
+      max-interval: ${INKFLOW_KAFKA_RETRY_MAX_INTERVAL:30s}
+      multiplier: ${INKFLOW_KAFKA_RETRY_MULTIPLIER:2.0}
+    consumer:
+      dlq-group-id: ${INKFLOW_KAFKA_DLQ_GROUP_ID:dlq-consumer}
   outbox:
     relay:
       enabled: ${INKFLOW_OUTBOX_RELAY_ENABLED:true}
