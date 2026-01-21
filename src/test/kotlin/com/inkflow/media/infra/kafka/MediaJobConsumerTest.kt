@@ -37,6 +37,7 @@ import com.inkflow.upload.domain.AssetMetadataRepository
 import com.inkflow.upload.domain.AssetStatus
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.clients.producer.ProducerRecord
 import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -47,9 +48,12 @@ import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
 import java.util.UUID
+import java.util.concurrent.CompletableFuture
+import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
 import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer
+import org.springframework.kafka.support.SendResult
 
 /**
  * MediaJobConsumer의 이벤트 분기와 실패 처리 흐름을 검증한다.
@@ -228,6 +232,12 @@ class MediaJobConsumerTest {
     private fun buildDlqPublisher(): DlqPublisher {
         @Suppress("UNCHECKED_CAST")
         val kafkaTemplate = Mockito.mock(KafkaTemplate::class.java) as KafkaTemplate<String, String>
+        // DLQ 전송을 모킹해 KafkaTemplate 호출로 예외가 발생하지 않도록 한다.
+        val sendResult = Mockito.mock(SendResult::class.java) as SendResult<String, String>
+        val future = CompletableFuture.completedFuture(sendResult)
+        Mockito.doReturn(future)
+            .`when`(kafkaTemplate)
+            .send(ArgumentMatchers.any<ProducerRecord<String, String>>())
         val recoverer = DeadLetterPublishingRecoverer(kafkaTemplate) { _, _ ->
             TopicPartition("dlq.media.jobs", 0)
         }

@@ -17,7 +17,6 @@ import com.inkflow.indexing.application.IndexingMessageMetadata
 import com.inkflow.indexing.domain.IndexEntityType
 import com.inkflow.indexing.domain.IndexOperation
 import org.apache.kafka.clients.consumer.ConsumerRecord
-import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito
@@ -77,10 +76,10 @@ class IndexEventConsumerTest {
     }
 
     /**
-     * 비즈니스 예외는 컨슈머에서 전파하지 않는지 확인한다.
+     * 비즈니스 예외는 DLQ 처리 흐름을 위해 전파되는지 확인한다.
      */
     @Test
-    fun consume_swallowBusinessException() {
+    fun consume_rethrowsBusinessException() {
         val service = Mockito.mock(IndexingApplicationService::class.java)
         val consumer = IndexEventConsumer(objectMapper, service, buildIdempotencyService())
         val payload = buildPayload()
@@ -97,7 +96,8 @@ class IndexEventConsumerTest {
             .`when`(service)
             .handleIndexRequest(expectedCommand, expectedMetadata)
 
-        assertDoesNotThrow {
+        // 비즈니스 오류는 에러 핸들러를 통해 DLQ로 이동해야 하므로 예외를 기대한다.
+        assertThrows(BusinessException::class.java) {
             consumer.consume(message)
         }
     }
