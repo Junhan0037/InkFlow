@@ -105,6 +105,51 @@ services:
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
 
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.104.0
+    container_name: inkflow-otel-collector
+    command: ["--config=/etc/otel-collector.yml"]
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    volumes:
+      - ./observability/otel-collector.yml:/etc/otel-collector.yml:ro
+    depends_on:
+      - tempo
+
+  tempo:
+    image: grafana/tempo:2.6.1
+    container_name: inkflow-tempo
+    command: ["-config.file=/etc/tempo/tempo.yml"]
+    volumes:
+      - ./observability/tempo.yml:/etc/tempo/tempo.yml:ro
+
+  prometheus:
+    image: prom/prometheus:v2.55.0
+    container_name: inkflow-prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: inkflow-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: inkflow
+      GF_SECURITY_ADMIN_PASSWORD: inkflow_pw
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - prometheus
+      - tempo
+
 volumes:
   postgres_data:
   mongo_data:
@@ -112,3 +157,4 @@ volumes:
   kafka_data:
   minio_data:
   elasticsearch_data:
+  grafana_data:

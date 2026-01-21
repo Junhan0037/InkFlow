@@ -31,7 +31,34 @@ spring:
       properties:
         enable.idempotence: true
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+  tracing:
+    sampling:
+      probability: ${INKFLOW_TRACING_SAMPLING_PROBABILITY:1.0}
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4317}
+
 inkflow:
+  observability:
+    service: ${INKFLOW_OBSERVABILITY_SERVICE:${spring.application.name}}
+    environment: ${INKFLOW_OBSERVABILITY_ENVIRONMENT:local}
+    instance-id: ${INKFLOW_OBSERVABILITY_INSTANCE_ID:}
+    extra-tags:
+      region: ${INKFLOW_OBSERVABILITY_REGION:}
+      zone: ${INKFLOW_OBSERVABILITY_ZONE:}
   idempotency:
     redis:
       key-prefix: ${INKFLOW_IDEMPOTENCY_KEY_PREFIX:idempotency:}
