@@ -18,6 +18,9 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageImpl
+import org.springframework.data.domain.Pageable
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
@@ -309,6 +312,36 @@ class WorkflowApplicationServiceTest {
         override fun save(log: WorkflowAuditLog): WorkflowAuditLog {
             logs.add(log)
             return log
+        }
+
+        /**
+         * 검색 조건에 맞는 감사 로그를 필터링해 반환한다.
+         */
+        override fun search(
+            episodeId: Long?,
+            actorId: String?,
+            action: WorkflowTransitionAction?,
+            fromState: WorkflowStatus?,
+            toState: WorkflowStatus?,
+            occurredFrom: Instant?,
+            occurredTo: Instant?,
+            pageable: Pageable
+        ): Page<WorkflowAuditLog> {
+            val filtered = logs.filter { log ->
+                val matchesEpisode = episodeId?.let { log.episodeId == it } ?: true
+                val matchesActor = actorId?.let { log.actorId == it } ?: true
+                val matchesAction = action?.let { log.action == it } ?: true
+                val matchesFromState = fromState?.let { log.fromState == it } ?: true
+                val matchesToState = toState?.let { log.toState == it } ?: true
+                val matchesFromTime = occurredFrom?.let { !log.occurredAt.isBefore(it) } ?: true
+                val matchesToTime = occurredTo?.let { !log.occurredAt.isAfter(it) } ?: true
+                matchesEpisode && matchesActor && matchesAction && matchesFromState && matchesToState &&
+                    matchesFromTime && matchesToTime
+            }
+            val start = pageable.offset.toInt()
+            val end = minOf(start + pageable.pageSize, filtered.size)
+            val pageContent = if (start >= filtered.size) emptyList() else filtered.subList(start, end)
+            return PageImpl(pageContent, pageable, filtered.size.toLong())
         }
     }
 

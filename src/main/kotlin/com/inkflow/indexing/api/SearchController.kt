@@ -25,9 +25,10 @@ import reactor.core.scheduler.Schedulers
 
 /**
  * 색인 검색 API.
+ * 운영 콘솔에서 사용하는 /ops/search 경로도 함께 제공한다.
  */
 @RestController
-@RequestMapping("/search")
+@RequestMapping("/search", "/ops/search")
 class SearchController(
     private val indexSearchApplicationService: IndexSearchApplicationService,
     private val requestContextFactory: RequestContextFactory
