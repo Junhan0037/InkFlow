@@ -27,6 +27,7 @@ class PublishSnapshotApplicationService(
     private val publishSnapshotRepository: PublishSnapshotRepository,
     private val episodeQueryRepository: EpisodeQueryRepository,
     private val outboxEventRepository: OutboxEventRepository,
+    private val publishPolicyService: PublishPolicyService,
     private val objectMapper: ObjectMapper,
     private val clock: Clock
 ) {
@@ -49,6 +50,11 @@ class PublishSnapshotApplicationService(
         }
 
         val now = Instant.now(clock)
+        val normalizedRegion = normalizeRegion(command.region)
+        val normalizedLanguage = normalizeLanguage(command.language)
+
+        // 정책 검증을 통과한 지역/언어만 퍼블리시를 진행한다.
+        val policy = publishPolicyService.ensurePublishable(normalizedRegion, normalizedLanguage, now)
         val latest = publishVersionRepository.findLatestByEpisodeId(command.episodeId)
         val nextVersion = (latest?.version ?: 0L) + 1L
         val snapshotId = UUID.randomUUID().toString()
@@ -63,8 +69,8 @@ class PublishSnapshotApplicationService(
             episodeId = command.episodeId,
             version = nextVersion,
             snapshotId = snapshotId,
-            region = command.region,
-            language = command.language,
+            region = policy.region,
+            language = policy.language,
             requestId = command.requestId,
             now = now
         )
@@ -74,8 +80,8 @@ class PublishSnapshotApplicationService(
             snapshotId = snapshotId,
             episodeId = command.episodeId,
             publishVersion = savedVersion.version,
-            region = command.region,
-            language = command.language,
+            region = policy.region,
+            language = policy.language,
             now = now
         )
         publishSnapshotRepository.save(snapshot)
@@ -154,7 +160,10 @@ class PublishSnapshotApplicationService(
      * 동일 requestId 요청의 파라미터 일치 여부를 확인한다.
      */
     private fun validateIdempotentRequest(command: CreateSnapshotCommand, existing: PublishVersion) {
-        if (existing.region != command.region || existing.language != command.language) {
+        // 지역/언어는 표준 형식으로 맞춘 뒤 동일 요청 여부를 판단한다.
+        val normalizedRegion = normalizeRegion(command.region)
+        val normalizedLanguage = normalizeLanguage(command.language)
+        if (normalizeRegion(existing.region) != normalizedRegion || normalizeLanguage(existing.language) != normalizedLanguage) {
             throw BusinessException(
                 errorCode = ErrorCode.CONFLICT,
                 details = mapOf(
@@ -164,6 +173,20 @@ class PublishSnapshotApplicationService(
                 message = "동일 requestId로 다른 퍼블리시 파라미터가 요청되었습니다."
             )
         }
+    }
+
+    /**
+     * 지역 코드를 표준 형식(대문자)으로 변환한다.
+     */
+    private fun normalizeRegion(region: String): String {
+        return region.trim().uppercase()
+    }
+
+    /**
+     * 언어 코드를 표준 형식(소문자)으로 변환한다.
+     */
+    private fun normalizeLanguage(language: String): String {
+        return language.trim().lowercase()
     }
 
     /**

@@ -5,6 +5,9 @@ import com.inkflow.common.error.ErrorCode
 import com.inkflow.common.events.EventObjectMapperFactory
 import com.inkflow.common.outbox.domain.OutboxEvent
 import com.inkflow.common.outbox.domain.OutboxEventRepository
+import com.inkflow.publish.domain.PublishPolicy
+import com.inkflow.publish.domain.PublishPolicyRepository
+import com.inkflow.publish.domain.PublishPolicyStatus
 import com.inkflow.publish.domain.PublishSnapshot
 import com.inkflow.publish.domain.PublishSnapshotRepository
 import com.inkflow.publish.domain.PublishSnapshotStatus
@@ -286,11 +289,14 @@ class PublishSnapshotApplicationServiceTest {
         episodeRepository: EpisodeQueryRepository,
         outboxRepository: OutboxEventRepository
     ): PublishSnapshotApplicationService {
+        // 테스트에서는 모든 지역/언어를 허용하는 정책을 사용한다.
+        val policyService = PublishPolicyService(AllowAllPublishPolicyRepository())
         return PublishSnapshotApplicationService(
             publishVersionRepository = versionRepository,
             publishSnapshotRepository = snapshotRepository,
             episodeQueryRepository = episodeRepository,
             outboxEventRepository = outboxRepository,
+            publishPolicyService = policyService,
             objectMapper = objectMapper,
             clock = clock
         )
@@ -435,6 +441,22 @@ class PublishSnapshotApplicationServiceTest {
          */
         override fun markFailed(eventId: UUID, lastError: String?) {
             // 테스트에서는 상태 갱신을 생략한다.
+        }
+    }
+
+    /**
+     * 테스트 전용 퍼블리시 정책 저장소로 모든 요청을 허용한다.
+     */
+    private class AllowAllPublishPolicyRepository : PublishPolicyRepository {
+        /**
+         * 요청된 지역/언어에 대해 활성 정책을 반환한다.
+         */
+        override fun findPolicy(region: String, language: String): PublishPolicy {
+            return PublishPolicy.defaultPolicy(
+                region = region,
+                language = language,
+                status = PublishPolicyStatus.ACTIVE
+            )
         }
     }
 }

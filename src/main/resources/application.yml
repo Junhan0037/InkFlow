@@ -102,6 +102,13 @@ inkflow:
       retry-max-delay: ${INKFLOW_OUTBOX_RELAY_RETRY_MAX_DELAY:1m}
       retry-multiplier: ${INKFLOW_OUTBOX_RELAY_RETRY_MULTIPLIER:2.0}
       retry-jitter-ratio: ${INKFLOW_OUTBOX_RELAY_RETRY_JITTER_RATIO:0.2}
+  publish:
+    policy:
+      default-status: ${INKFLOW_PUBLISH_POLICY_DEFAULT_STATUS:ACTIVE}
+      rules:
+        - region: ${INKFLOW_PUBLISH_POLICY_DEFAULT_REGION:KR}
+          language: ${INKFLOW_PUBLISH_POLICY_DEFAULT_LANGUAGE:ko}
+          status: ${INKFLOW_PUBLISH_POLICY_DEFAULT_RULE_STATUS:ACTIVE}
   upload:
     session:
       ttl: ${INKFLOW_UPLOAD_SESSION_TTL:30m}
