@@ -21,8 +21,26 @@ data class CreateUploadSessionCommand(
  */
 data class PresignedPartUrl(
     val partNumber: Int,
-    val url: String
+    val url: String,
+    val accelerationUrls: List<AcceleratedPresignedUrl> = emptyList()
 )
+
+/**
+ * 업로드 가속 옵션에서 사용할 presigned URL 정보를 표현한다.
+ */
+data class AcceleratedPresignedUrl(
+    val mode: UploadAccelerationMode,
+    val url: String,
+    val region: String? = null
+)
+
+/**
+ * 업로드 가속 경로 유형을 구분한다.
+ */
+enum class UploadAccelerationMode {
+    REGION,
+    CDN
+}
 
 /**
  * 업로드 세션 생성 결과를 표현한다.

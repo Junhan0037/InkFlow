@@ -1,5 +1,6 @@
 package com.inkflow.upload.api
 
+import com.inkflow.upload.application.UploadAccelerationMode
 import com.inkflow.upload.domain.AssetStatus
 import java.time.Instant
 
@@ -18,7 +19,17 @@ data class CreateUploadSessionResponse(
  */
 data class PresignedPartUrlResponse(
     val partNumber: Int,
-    val url: String
+    val url: String,
+    val accelerationUrls: List<AccelerationPresignedUrlResponse> = emptyList()
+)
+
+/**
+ * 업로드 가속 옵션용 presigned URL 응답 DTO.
+ */
+data class AccelerationPresignedUrlResponse(
+    val mode: UploadAccelerationMode,
+    val url: String,
+    val region: String? = null
 )
 
 /**

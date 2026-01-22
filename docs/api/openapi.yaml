@@ -77,6 +77,12 @@ paths:
                       presignedUrls:
                         - partNumber: 1
                           url: https://...
+                          accelerationUrls:
+                            - mode: REGION
+                              region: ap-northeast-2
+                              url: https://ap-northeast-2.example.com/...
+                            - mode: CDN
+                              url: https://cdn.example.com/...
                       expiresAt: "2025-01-01T00:30:00Z"
 
   /uploads/{uploadId}/complete:
@@ -466,6 +472,29 @@ components:
         url:
           type: string
           description: 업로드 URL
+        accelerationUrls:
+          type: array
+          items:
+            $ref: "#/components/schemas/AccelerationPresignedUrl"
+          description: 멀티 리전/ CDN 업로드 가속 URL 목록
+
+    AccelerationPresignedUrl:
+      type: object
+      required: [mode, url]
+      properties:
+        mode:
+          $ref: "#/components/schemas/UploadAccelerationMode"
+        region:
+          type: string
+          description: 리전 코드(예: ap-northeast-2)
+        url:
+          type: string
+          description: 가속 업로드 URL
+
+    UploadAccelerationMode:
+      type: string
+      enum: [REGION, CDN]
+      description: 업로드 가속 경로 유형
 
     # 업로드 완료 요청
     UploadCompleteRequest:

@@ -174,7 +174,19 @@ class UploadSessionController(
         return CreateUploadSessionResponse(
             uploadId = uploadId,
             chunkSize = chunkSize,
-            presignedUrls = presignedUrls.map { PresignedPartUrlResponse(it.partNumber, it.url) },
+            presignedUrls = presignedUrls.map { presigned ->
+                PresignedPartUrlResponse(
+                    partNumber = presigned.partNumber,
+                    url = presigned.url,
+                    accelerationUrls = presigned.accelerationUrls.map {
+                        AccelerationPresignedUrlResponse(
+                            mode = it.mode,
+                            url = it.url,
+                            region = it.region
+                        )
+                    }
+                )
+            },
             expiresAt = expiresAt
         )
     }

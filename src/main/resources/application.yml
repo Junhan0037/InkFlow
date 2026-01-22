@@ -124,6 +124,16 @@ inkflow:
       allowed-extensions: ${INKFLOW_UPLOAD_ALLOWED_EXTENSIONS:jpg,jpeg,png,gif,webp,mp4,mov,pdf,epub}
     presign:
       base-url: ${INKFLOW_UPLOAD_PRESIGN_BASE_URL:http://localhost:9000}
+      acceleration:
+        enabled: ${INKFLOW_UPLOAD_ACCELERATION_ENABLED:false}
+        regions:
+          - region: ${INKFLOW_UPLOAD_ACCELERATION_REGION1:}
+            base-url: ${INKFLOW_UPLOAD_ACCELERATION_REGION1_BASE_URL:}
+          - region: ${INKFLOW_UPLOAD_ACCELERATION_REGION2:}
+            base-url: ${INKFLOW_UPLOAD_ACCELERATION_REGION2_BASE_URL:}
+        cdn:
+          enabled: ${INKFLOW_UPLOAD_ACCELERATION_CDN_ENABLED:false}
+          base-url: ${INKFLOW_UPLOAD_ACCELERATION_CDN_BASE_URL:}
     download:
       ttl: ${INKFLOW_UPLOAD_DOWNLOAD_TTL:10m}
     idempotency:
