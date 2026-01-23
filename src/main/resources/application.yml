@@ -114,6 +114,9 @@ inkflow:
         - region: ${INKFLOW_PUBLISH_POLICY_DEFAULT_REGION:KR}
           language: ${INKFLOW_PUBLISH_POLICY_DEFAULT_LANGUAGE:ko}
           status: ${INKFLOW_PUBLISH_POLICY_DEFAULT_RULE_STATUS:ACTIVE}
+    grpc:
+      port: ${INKFLOW_PUBLISH_GRPC_PORT:9091}
+      shutdown-timeout: ${INKFLOW_PUBLISH_GRPC_SHUTDOWN_TIMEOUT:5s}
   upload:
     session:
       ttl: ${INKFLOW_UPLOAD_SESSION_TTL:30m}
@@ -172,7 +175,3 @@ inkflow:
       default-target: ${INKFLOW_INDEXING_BATCH_DEFAULT_TARGET:ALL}
       chunk-size: ${INKFLOW_INDEXING_BATCH_CHUNK_SIZE:200}
       page-size: ${INKFLOW_INDEXING_BATCH_PAGE_SIZE:200}
-  publish:
-    grpc:
-      port: ${INKFLOW_PUBLISH_GRPC_PORT:9091}
-      shutdown-timeout: ${INKFLOW_PUBLISH_GRPC_SHUTDOWN_TIMEOUT:5s}

@@ -77,6 +77,8 @@ kotlin {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    // 테스트 환경에서는 Outbox Relay 스케줄러를 비활성화한다.
+    systemProperty("inkflow.outbox.relay.enabled", "false")
 }
 
 protobuf {
