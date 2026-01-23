@@ -117,6 +117,12 @@ inkflow:
     grpc:
       port: ${INKFLOW_PUBLISH_GRPC_PORT:9091}
       shutdown-timeout: ${INKFLOW_PUBLISH_GRPC_SHUTDOWN_TIMEOUT:5s}
+      tls:
+        enabled: ${INKFLOW_PUBLISH_GRPC_TLS_ENABLED:false}
+        cert-chain-file: ${INKFLOW_PUBLISH_GRPC_TLS_CERT_CHAIN:}
+        private-key-file: ${INKFLOW_PUBLISH_GRPC_TLS_PRIVATE_KEY:}
+        trust-cert-collection-file: ${INKFLOW_PUBLISH_GRPC_TLS_TRUST_CERT_COLLECTION:}
+        client-auth: ${INKFLOW_PUBLISH_GRPC_TLS_CLIENT_AUTH:NONE}
   upload:
     session:
       ttl: ${INKFLOW_UPLOAD_SESSION_TTL:30m}
