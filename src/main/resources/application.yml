@@ -30,6 +30,11 @@ spring:
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
       properties:
         enable.idempotence: true
+  batch:
+    job:
+      enabled: ${SPRING_BATCH_JOB_ENABLED:false}
+    jdbc:
+      initialize-schema: ${SPRING_BATCH_JDBC_INIT_SCHEMA:always}
 
 management:
   endpoints:
@@ -161,6 +166,12 @@ inkflow:
       works: ${INKFLOW_INDEXING_WORKS_INDEX:works_write}
       episodes: ${INKFLOW_INDEXING_EPISODES_INDEX:episodes_write}
       assets: ${INKFLOW_INDEXING_ASSETS_INDEX:assets_write}
+    batch:
+      enabled: ${INKFLOW_INDEXING_BATCH_ENABLED:true}
+      run-on-startup: ${INKFLOW_INDEXING_BATCH_RUN_ON_STARTUP:false}
+      default-target: ${INKFLOW_INDEXING_BATCH_DEFAULT_TARGET:ALL}
+      chunk-size: ${INKFLOW_INDEXING_BATCH_CHUNK_SIZE:200}
+      page-size: ${INKFLOW_INDEXING_BATCH_PAGE_SIZE:200}
   publish:
     grpc:
       port: ${INKFLOW_PUBLISH_GRPC_PORT:9091}
