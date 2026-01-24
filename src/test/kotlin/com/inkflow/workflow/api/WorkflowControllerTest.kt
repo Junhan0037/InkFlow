@@ -42,7 +42,7 @@ class WorkflowControllerTest(
         val expectedCommand = SubmitEpisodeCommand(
             episodeId = 1L,
             submitterId = "creator-1",
-            deadline = Instant.parse("2024-01-02T00:00:00Z")
+            deadline = Instant.parse("2026-01-02T00:00:00Z")
         )
         val result = WorkflowTransitionResult(
             episodeId = 1L,
@@ -200,7 +200,7 @@ class WorkflowControllerTest(
      */
     @Test
     fun submitEpisode_withoutUserHeader_returnsUnauthorized() {
-        val request = SubmitEpisodeRequest(deadline = Instant.parse("2024-01-02T00:00:00Z"))
+        val request = SubmitEpisodeRequest(deadline = Instant.parse("2026-01-02T00:00:00Z"))
 
         webTestClient.post()
             .uri("/episodes/1/submit")

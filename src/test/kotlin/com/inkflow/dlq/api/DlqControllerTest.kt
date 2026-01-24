@@ -100,7 +100,7 @@ class DlqControllerTest(
             originalTopic = "media.jobs",
             originalPartition = 2,
             originalOffset = 42,
-            originalTimestamp = Instant.parse("2024-01-01T00:00:00Z"),
+            originalTimestamp = Instant.parse("2026-01-01T00:00:00Z"),
             messageKey = "key-1",
             payload = "{\"eventId\":\"evt-1\"}",
             headers = mapOf("header" to "value"),
@@ -109,7 +109,7 @@ class DlqControllerTest(
             producer = "media-worker",
             traceId = "trace-1",
             idempotencyKey = "idem-1",
-            occurredAt = Instant.parse("2024-01-01T00:00:00Z"),
+            occurredAt = Instant.parse("2026-01-01T00:00:00Z"),
             errorType = "java.lang.RuntimeException",
             errorMessage = "boom",
             errorStacktrace = "stack",
@@ -119,7 +119,7 @@ class DlqControllerTest(
             lastReprocessBy = null,
             lastReprocessReason = null,
             lastReprocessError = null,
-            storedAt = Instant.parse("2024-01-01T00:00:00Z")
+            storedAt = Instant.parse("2026-01-01T00:00:00Z")
         )
     }
 }

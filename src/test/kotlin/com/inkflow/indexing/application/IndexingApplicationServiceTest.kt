@@ -24,7 +24,7 @@ import java.util.UUID
  * IndexingApplicationService의 색인 분기 로직을 검증한다.
  */
 class IndexingApplicationServiceTest {
-    private val baseTime: Instant = Instant.parse("2024-01-01T00:00:00Z")
+    private val baseTime: Instant = Instant.parse("2026-01-01T00:00:00Z")
 
     /**
      * Work UPSERT 요청이 게이트웨이에 전달되는지 확인한다.

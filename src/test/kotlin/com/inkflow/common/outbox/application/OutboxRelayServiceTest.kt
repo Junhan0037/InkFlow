@@ -167,7 +167,7 @@ class OutboxRelayServiceTest {
         retryCount: Int = 0,
         nextRetryAt: Instant? = null,
         lockedAt: Instant? = null,
-        createdAt: Instant = Instant.parse("2024-01-01T00:00:00Z"),
+        createdAt: Instant = Instant.parse("2026-01-01T00:00:00Z"),
         id: UUID = UUID.fromString("00000000-0000-0000-0000-000000000001")
     ): OutboxEvent {
         return OutboxEvent(

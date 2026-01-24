@@ -31,7 +31,7 @@ import java.util.concurrent.CompletableFuture
  * DLQ 메시지 적재/재처리 애플리케이션 서비스의 핵심 흐름을 검증.
  */
 class DlqMessageApplicationServiceTest {
-    private val baseTime: Instant = Instant.parse("2024-01-01T00:00:00Z")
+    private val baseTime: Instant = Instant.parse("2026-01-01T00:00:00Z")
     private val clock: Clock = Clock.fixed(baseTime, ZoneOffset.UTC)
     private val objectMapper = EventObjectMapperFactory.defaultObjectMapper()
     private val kafkaProperties = InkflowKafkaProperties()

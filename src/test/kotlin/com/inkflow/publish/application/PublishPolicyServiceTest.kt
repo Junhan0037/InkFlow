@@ -22,7 +22,7 @@ class PublishPolicyServiceTest {
     fun ensurePublishable_returnsDefaultPolicyAndNormalizesInput() {
         val repository = RecordingPublishPolicyRepository(null)
         val service = PublishPolicyService(repository)
-        val now = Instant.parse("2024-01-01T00:00:00Z")
+        val now = Instant.parse("2026-01-01T00:00:00Z")
 
         // 실행: 공백/대소문자가 섞인 요청을 전달한다.
         val policy = service.ensurePublishable(" kr ", " Ko ", now)
@@ -50,7 +50,7 @@ class PublishPolicyServiceTest {
         )
         val repository = RecordingPublishPolicyRepository(blockedPolicy)
         val service = PublishPolicyService(repository)
-        val now = Instant.parse("2024-01-01T00:00:00Z")
+        val now = Instant.parse("2026-01-01T00:00:00Z")
 
         // 실행/검증: 정책이 차단되면 예외가 발생한다.
         val exception = assertThrows(BusinessException::class.java) {

@@ -29,7 +29,7 @@ import java.time.ZoneOffset
  * 워크플로우 애플리케이션 서비스의 핵심 동작을 검증한다.
  */
 class WorkflowApplicationServiceTest {
-    private val baseTime: Instant = Instant.parse("2024-01-01T00:00:00Z")
+    private val baseTime: Instant = Instant.parse("2026-01-01T00:00:00Z")
     private val clock: Clock = Clock.fixed(baseTime, ZoneOffset.UTC)
     private val eventSerializer = JacksonEventSerializer(EventObjectMapperFactory.defaultObjectMapper())
 
@@ -55,7 +55,7 @@ class WorkflowApplicationServiceTest {
         val command = SubmitEpisodeCommand(
             episodeId = 1L,
             submitterId = "creator-1",
-            deadline = Instant.parse("2024-01-02T00:00:00Z")
+            deadline = Instant.parse("2026-01-02T00:00:00Z")
         )
         val result = service.submit(command)
 

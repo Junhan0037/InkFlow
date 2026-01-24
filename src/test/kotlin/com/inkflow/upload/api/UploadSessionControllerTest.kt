@@ -48,7 +48,7 @@ class UploadSessionControllerTest(
             uploadId = "upl-1",
             chunkSize = 10L,
             presignedUrls = listOf(PresignedPartUrl(partNumber = 1, url = "https://example.com/1")),
-            expiresAt = Instant.parse("2024-01-01T00:00:00Z")
+            expiresAt = Instant.parse("2026-01-01T00:00:00Z")
         )
         val expectedCommand = CreateUploadSessionCommand(
             episodeId = 1L,

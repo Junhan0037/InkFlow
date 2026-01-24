@@ -16,7 +16,7 @@ class PublishPolicyTest {
      */
     @Test
     fun evaluate_allowsWhenWithinWindow() {
-        val now = Instant.parse("2024-01-01T00:00:00Z")
+        val now = Instant.parse("2026-01-01T00:00:00Z")
         val policy = PublishPolicy(
             region = "KR",
             language = "ko",
@@ -39,7 +39,7 @@ class PublishPolicyTest {
      */
     @Test
     fun evaluate_deniesWhenLocked() {
-        val now = Instant.parse("2024-01-01T00:00:00Z")
+        val now = Instant.parse("2026-01-01T00:00:00Z")
         val policy = PublishPolicy(
             region = "US",
             language = "en",
@@ -62,7 +62,7 @@ class PublishPolicyTest {
      */
     @Test
     fun evaluate_deniesWhenDisabled() {
-        val now = Instant.parse("2024-01-01T00:00:00Z")
+        val now = Instant.parse("2026-01-01T00:00:00Z")
         val policy = PublishPolicy(
             region = "JP",
             language = "ja",
@@ -85,7 +85,7 @@ class PublishPolicyTest {
      */
     @Test
     fun evaluate_deniesWhenBeforeAvailableFrom() {
-        val now = Instant.parse("2024-01-01T00:00:00Z")
+        val now = Instant.parse("2026-01-01T00:00:00Z")
         val policy = PublishPolicy(
             region = "KR",
             language = "ko",
@@ -108,7 +108,7 @@ class PublishPolicyTest {
      */
     @Test
     fun evaluate_deniesWhenAfterAvailableUntil() {
-        val now = Instant.parse("2024-01-01T00:00:00Z")
+        val now = Instant.parse("2026-01-01T00:00:00Z")
         val policy = PublishPolicy(
             region = "KR",
             language = "ko",

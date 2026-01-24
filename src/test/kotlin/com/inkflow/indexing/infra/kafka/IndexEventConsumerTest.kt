@@ -28,7 +28,7 @@ import java.util.UUID
  * IndexEventConsumer의 이벤트 분기와 예외 처리 흐름을 검증한다.
  */
 class IndexEventConsumerTest {
-    private val baseTime: Instant = Instant.parse("2024-01-01T00:00:00Z")
+    private val baseTime: Instant = Instant.parse("2026-01-01T00:00:00Z")
     private val objectMapper = EventObjectMapperFactory.defaultObjectMapper()
 
     /**

@@ -93,7 +93,7 @@ class EventEnvelopeTest {
             payload = payload,
             traceId = "0123456789abcdef0123456789abcdef",
             idempotencyKey = "upl-1",
-            occurredAt = Instant.parse("2024-01-01T00:00:00Z")
+            occurredAt = Instant.parse("2026-01-01T00:00:00Z")
         )
 
         val serializer = JacksonEventSerializer()

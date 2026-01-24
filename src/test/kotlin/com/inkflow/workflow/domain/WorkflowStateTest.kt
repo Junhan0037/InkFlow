@@ -14,7 +14,7 @@ class WorkflowStateTest {
      */
     @Test
     fun createDraft_initializesState() {
-        val now = Instant.parse("2024-01-01T00:00:00Z")
+        val now = Instant.parse("2026-01-01T00:00:00Z")
 
         val state = WorkflowState.createDraft(episodeId = 1L, now = now)
 
@@ -28,7 +28,7 @@ class WorkflowStateTest {
      */
     @Test
     fun submit_transitionsToSubmitted() {
-        val now = Instant.parse("2024-01-01T00:00:00Z")
+        val now = Instant.parse("2026-01-01T00:00:00Z")
         val state = WorkflowState.createDraft(episodeId = 1L, now = now)
 
         val updated = state.submit(now.plusSeconds(60))
@@ -42,7 +42,7 @@ class WorkflowStateTest {
      */
     @Test
     fun startReview_rejectsWhenNotSubmitted() {
-        val now = Instant.parse("2024-01-01T00:00:00Z")
+        val now = Instant.parse("2026-01-01T00:00:00Z")
         val state = WorkflowState.createDraft(episodeId = 1L, now = now)
 
         assertThrows(IllegalArgumentException::class.java) {
@@ -55,7 +55,7 @@ class WorkflowStateTest {
      */
     @Test
     fun approve_transitionsToApproved() {
-        val now = Instant.parse("2024-01-01T00:00:00Z")
+        val now = Instant.parse("2026-01-01T00:00:00Z")
         val reviewing = WorkflowState(
             episodeId = 1L,
             state = WorkflowStatus.REVIEWING,
@@ -74,7 +74,7 @@ class WorkflowStateTest {
      */
     @Test
     fun reject_transitionsToRejected() {
-        val now = Instant.parse("2024-01-01T00:00:00Z")
+        val now = Instant.parse("2026-01-01T00:00:00Z")
         val reviewing = WorkflowState(
             episodeId = 1L,
             state = WorkflowStatus.REVIEWING,

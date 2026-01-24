@@ -33,7 +33,7 @@ class SearchControllerTest(
     @Autowired
     private lateinit var indexSearchApplicationService: IndexSearchApplicationService
 
-    private val baseTime: Instant = Instant.parse("2024-01-01T00:00:00Z")
+    private val baseTime: Instant = Instant.parse("2026-01-01T00:00:00Z")
 
     /**
      * Work 검색 응답이 정상 포맷으로 반환되는지 확인한다.

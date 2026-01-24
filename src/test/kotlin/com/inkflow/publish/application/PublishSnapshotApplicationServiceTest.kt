@@ -28,7 +28,7 @@ import java.util.UUID
  * 퍼블리시 스냅샷 생성/롤백 애플리케이션 서비스의 주요 흐름을 검증.
  */
 class PublishSnapshotApplicationServiceTest {
-    private val baseTime: Instant = Instant.parse("2024-01-01T00:00:00Z")
+    private val baseTime: Instant = Instant.parse("2026-01-01T00:00:00Z")
     private val clock: Clock = Clock.fixed(baseTime, ZoneOffset.UTC)
     private val objectMapper = EventObjectMapperFactory.defaultObjectMapper()
 

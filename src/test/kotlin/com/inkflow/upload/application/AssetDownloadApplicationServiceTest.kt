@@ -38,8 +38,8 @@ class AssetDownloadApplicationServiceTest {
             storageBucket = "bucket",
             storageKey = "uploads/creator-1/1/upl-1/image.png",
             status = AssetStatus.STORED,
-            createdAt = Instant.parse("2024-01-01T00:00:00Z"),
-            updatedAt = Instant.parse("2024-01-01T00:00:00Z")
+            createdAt = Instant.parse("2026-01-01T00:00:00Z"),
+            updatedAt = Instant.parse("2026-01-01T00:00:00Z")
         )
         assetRepository.save(asset)
         val service = buildService(assetRepository = assetRepository)
@@ -75,8 +75,8 @@ class AssetDownloadApplicationServiceTest {
             storageBucket = "bucket",
             storageKey = "uploads/creator-1/1/upl-1/image.png",
             status = AssetStatus.STORED,
-            createdAt = Instant.parse("2024-01-01T00:00:00Z"),
-            updatedAt = Instant.parse("2024-01-01T00:00:00Z")
+            createdAt = Instant.parse("2026-01-01T00:00:00Z"),
+            updatedAt = Instant.parse("2026-01-01T00:00:00Z")
         )
         assetRepository.save(asset)
         val service = buildService(assetRepository = assetRepository)
@@ -108,8 +108,8 @@ class AssetDownloadApplicationServiceTest {
             storageBucket = "bucket",
             storageKey = "uploads/creator-1/1/upl-1/image.png",
             status = AssetStatus.FAILED,
-            createdAt = Instant.parse("2024-01-01T00:00:00Z"),
-            updatedAt = Instant.parse("2024-01-01T00:00:00Z")
+            createdAt = Instant.parse("2026-01-01T00:00:00Z"),
+            updatedAt = Instant.parse("2026-01-01T00:00:00Z")
         )
         assetRepository.save(asset)
         val service = buildService(assetRepository = assetRepository)
@@ -129,7 +129,7 @@ class AssetDownloadApplicationServiceTest {
         assetRepository: AssetMetadataRepository = InMemoryAssetMetadataRepository(),
         presignedProvider: PresignedDownloadUrlProvider = StubPresignedDownloadUrlProvider(),
         properties: AssetDownloadProperties = AssetDownloadProperties(ttl = Duration.ofMinutes(10)),
-        clock: Clock = Clock.fixed(Instant.parse("2024-01-01T00:00:00Z"), ZoneOffset.UTC)
+        clock: Clock = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC)
     ): AssetDownloadApplicationService {
         return AssetDownloadApplicationService(
             assetMetadataRepository = assetRepository,

@@ -16,7 +16,7 @@ import java.util.UUID
  * MediaJobFailureHandler의 실패 로그 기록과 재시도 판단을 검증한다.
  */
 class MediaJobFailureHandlerTest {
-    private val baseTime: Instant = Instant.parse("2024-01-01T00:00:00Z")
+    private val baseTime: Instant = Instant.parse("2026-01-01T00:00:00Z")
     private val clock: Clock = Clock.fixed(baseTime, ZoneOffset.UTC)
 
     /**

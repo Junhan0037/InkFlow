@@ -26,7 +26,7 @@ import java.util.UUID
  * MediaJobApplicationService의 썸네일 파이프라인 동작을 검증한다.
  */
 class MediaJobApplicationServiceTest {
-    private val baseTime: Instant = Instant.parse("2024-01-01T00:00:00Z")
+    private val baseTime: Instant = Instant.parse("2026-01-01T00:00:00Z")
     private val fixedClock: Clock = Clock.fixed(baseTime, ZoneOffset.UTC)
 
     /**

@@ -40,7 +40,7 @@ class AssetDownloadControllerTest(
             contentType = "image/png",
             size = 10L,
             url = "https://example.com/download",
-            expiresAt = Instant.parse("2024-01-01T00:00:00Z")
+            expiresAt = Instant.parse("2026-01-01T00:00:00Z")
         )
         val expectedCommand = AssetDownloadCommand(
             assetId = 1L,

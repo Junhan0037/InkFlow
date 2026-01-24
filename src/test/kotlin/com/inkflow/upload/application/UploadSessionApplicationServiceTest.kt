@@ -190,8 +190,8 @@ class UploadSessionApplicationServiceTest {
             storageBucket = "bucket",
             storageKey = "uploads/creator-1/1/upl-1/image.png",
             multipartUploadId = "mpu-1",
-            expiresAt = Instant.parse("2024-01-02T00:00:00Z"),
-            now = Instant.parse("2024-01-01T00:00:00Z")
+            expiresAt = Instant.parse("2026-01-02T00:00:00Z"),
+            now = Instant.parse("2026-01-01T00:00:00Z")
         )
         uploadSessionRepository.save(session)
 
@@ -248,8 +248,8 @@ class UploadSessionApplicationServiceTest {
             storageBucket = "bucket",
             storageKey = "uploads/creator-1/1/upl-2/image.png",
             multipartUploadId = "mpu-2",
-            expiresAt = Instant.parse("2024-01-02T00:00:00Z"),
-            now = Instant.parse("2024-01-01T00:00:00Z")
+            expiresAt = Instant.parse("2026-01-02T00:00:00Z"),
+            now = Instant.parse("2026-01-01T00:00:00Z")
         )
         uploadSessionRepository.save(session)
 
@@ -297,8 +297,8 @@ class UploadSessionApplicationServiceTest {
             storageBucket = "bucket",
             storageKey = "uploads/creator-1/1/upl-3/image.png",
             multipartUploadId = "mpu-3",
-            expiresAt = Instant.parse("2024-01-02T00:00:00Z"),
-            now = Instant.parse("2024-01-01T00:00:00Z")
+            expiresAt = Instant.parse("2026-01-02T00:00:00Z"),
+            now = Instant.parse("2026-01-01T00:00:00Z")
         )
         uploadSessionRepository.save(session)
 
@@ -338,7 +338,7 @@ class UploadSessionApplicationServiceTest {
             maxFileSize = 1_000L,
             allowedExtensions = setOf("png")
         ),
-        clock: Clock = Clock.fixed(Instant.parse("2024-01-01T00:00:00Z"), ZoneOffset.UTC)
+        clock: Clock = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC)
     ): UploadSessionApplicationService {
         return UploadSessionApplicationService(
             uploadSessionRepository = uploadSessionRepository,

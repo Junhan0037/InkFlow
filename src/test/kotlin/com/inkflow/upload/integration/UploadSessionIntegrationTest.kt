@@ -103,7 +103,7 @@ class UploadSessionIntegrationTest {
      * Work/Episode 초기 데이터를 삽입한다.
      */
     private fun seedWorkAndEpisode(workId: Long, episodeId: Long, creatorId: String) {
-        val now = Timestamp.from(Instant.parse("2024-01-01T00:00:00Z"))
+        val now = Timestamp.from(Instant.parse("2026-01-01T00:00:00Z"))
         jdbcTemplate.update(
             """
             INSERT INTO work (id, title, creator_id, status, default_language, created_at, updated_at)
