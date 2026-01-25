@@ -65,6 +65,8 @@ dependencies {
     testImplementation("org.testcontainers:testcontainers:1.20.6")
     testImplementation("org.testcontainers:junit-jupiter:1.20.6")
     testImplementation("org.testcontainers:postgresql:1.20.6")
+    testImplementation("org.testcontainers:mongodb:1.20.6")
+    testImplementation("org.testcontainers:kafka:1.20.6")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
@@ -79,6 +81,8 @@ tasks.withType<Test> {
     useJUnitPlatform()
     // 테스트 환경에서는 Outbox Relay 스케줄러를 비활성화한다.
     systemProperty("inkflow.outbox.relay.enabled", "false")
+    // 테스트 환경에서는 gRPC 서버를 임시 포트에 바인딩한다.
+    systemProperty("inkflow.publish.grpc.port", "0")
 }
 
 protobuf {
