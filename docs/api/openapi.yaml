@@ -326,7 +326,7 @@ components:
           description: 요청 식별자
         code:
           type: string
-          description: 응답 코드(예: OK)
+          description: "응답 코드(예: OK)"
         message:
           type: string
           description: 응답 메시지
@@ -342,7 +342,7 @@ components:
           description: 요청 식별자
         code:
           type: string
-          description: 응답 코드(예: OK)
+          description: "응답 코드(예: OK)"
         message:
           type: string
           description: 응답 메시지
@@ -358,7 +358,7 @@ components:
           description: 요청 식별자
         code:
           type: string
-          description: 응답 코드(예: OK)
+          description: "응답 코드(예: OK)"
         message:
           type: string
           description: 응답 메시지
@@ -374,7 +374,7 @@ components:
           description: 요청 식별자
         code:
           type: string
-          description: 응답 코드(예: OK)
+          description: "응답 코드(예: OK)"
         message:
           type: string
           description: 응답 메시지
@@ -390,7 +390,7 @@ components:
           description: 요청 식별자
         code:
           type: string
-          description: 응답 코드(예: OK)
+          description: "응답 코드(예: OK)"
         message:
           type: string
           description: 응답 메시지
@@ -406,7 +406,7 @@ components:
           description: 요청 식별자
         code:
           type: string
-          description: 응답 코드(예: OK)
+          description: "응답 코드(예: OK)"
         message:
           type: string
           description: 응답 메시지
@@ -434,7 +434,7 @@ components:
           description: 파일 크기(Bytes)
         checksum:
           type: string
-          description: 체크섬(예: sha256)
+          description: "체크섬(예: sha256)"
         totalParts:
           type: integer
           description: multipart 총 파트 수
@@ -486,7 +486,7 @@ components:
           $ref: "#/components/schemas/UploadAccelerationMode"
         region:
           type: string
-          description: 리전 코드(예: ap-northeast-2)
+          description: "리전 코드(예: ap-northeast-2)"
         url:
           type: string
           description: 가속 업로드 URL
@@ -533,7 +533,7 @@ components:
           description: 생성된 자산 ID
         status:
           type: string
-          description: 자산 상태(예: STORED)
+          description: "자산 상태(예: STORED)"
 
     # 워크플로우 제출 요청
     WorkflowSubmitRequest:
